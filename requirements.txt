@@ -1,0 +1,6 @@
+pytest
+
+scapy
+zmq
+
+pytrafficgen

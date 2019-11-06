@@ -32,3 +32,7 @@ $ java -jar trex-stateless-gui.jar
   - Not python 2, tested on Python 3.6 and later
   - Way too many decorators up to the point where debug is not fluent.
   - If we can get rid of asynch, will be better
+
+### Requirements
+- start trex on remote machine if not running (p3)
+
