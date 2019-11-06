@@ -15,17 +15,22 @@ def logger():
 
 
 @pytest.fixture(scope='module')
-def app(pytestconfig, logger):
+def trex(pytestconfig, logger):
     trex = TrexApp(logger)
     trex.connect(pytestconfig.getoption('chassis'))
     yield trex
     trex.disconnect()
 
 
+@pytest.fixture(scope='module')
+def ports(pytestconfig):
+    yield pytestconfig.getoption('chassis')
+
+
 class TestOffline:
 
-    def test_hello_world(self, app):
+    def test_hello_world(self, trex):
         pass
 
-    def test_reserve_ports(self, client):
-        pass
+    def test_reserve_ports(self, trex, ports):
+        trex.reserve_ports(ports)

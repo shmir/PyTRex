@@ -10,6 +10,7 @@ from trafficgenerator.tgn_app import TgnApp
 from trafficgenerator.tgn_utils import ApiType
 from .api.trex_stl_conn import Connection
 from .api.trex_event import EventsHandler
+from .trex_port import TrexPort
 
 
 def run_trex(ip, user, password, path):
@@ -51,9 +52,24 @@ class TrexApp(TgnApp):
     def disconnect(self):
         self.conn.disconnect()
 
+    def reserve_ports(self, locations, force=False, reset=True):
+        """ Reserve ports and reset factory defaults.
+
+        TRex -> Port -> Acquire.
+
+        :param locations: list of ports locations in the form <port number> to reserve
+        :param force: True - take forcefully. False - fail if port is reserved by other user
+        :param reset: True - reset port, False - leave port configuration
+        :return: ports dictionary (index: object)
+        """
+
+        for location in locations:
+            TrexPort(location)
+
+        return self.ports
+
     def _get_api_h(self):
         return self.conn.get_api_h()
-        self.event_handler = EventsHandler(self)
 
     # transmit request on the RPC link
     def _transmit(self, method_name, params=None, api_class='core'):
