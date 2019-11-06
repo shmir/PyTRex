@@ -1,0 +1,9 @@
+venv*
+.idea
+dist
+
+trex_stl_lib/__pycache__/
+trex_stl_lib/*/__pycache__/
+trex_stl_lib.egg-info
+
+*.pyc
