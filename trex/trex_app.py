@@ -105,6 +105,12 @@ class TrexServer(TrexObject):
             TrexPort(parent=self, index=location).reserve(force)
         return self.ports
 
+    def get_system_info(self):
+        return self.api.rpc.transmit("get_system_info", {}).rc_list[0].data
+
+    def get_supported_cmds(self):
+        return self.api.rpc.transmit("get_supported_cmds", {}).rc_list[0].data
+
     @property
     def ports(self):
         """
