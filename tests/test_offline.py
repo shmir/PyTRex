@@ -2,7 +2,6 @@
 import sys
 import pytest
 import logging
-import json
 
 from trex.trex_app import TrexApp
 
@@ -42,4 +41,10 @@ class TestOffline:
         print(f'commands: {supported_cmds}')
 
     def test_reserve_ports(self, trex, ports):
-        trex.server.reserve_ports(ports, force=True)
+        trex_ports = trex.server.reserve_ports(ports, force=True)
+        assert len(trex_ports) == 2
+
+    def test_create_stream(self, trex, ports):
+        trex_port = list(trex.server.reserve_ports(ports, force=True).values())[0]
+        trex_port.remove_all_streams()
+        trex_stream = trex_port.add_stream('Stream 1-1')

@@ -6,6 +6,8 @@ Classes and utilities that represents TRex port.
 
 
 from .trex_object import TrexObject
+from .trex_stream import TrexStream
+from .api.trex_stl_types import RpcCmdData
 
 
 class TrexPort(TrexObject):
@@ -14,7 +16,7 @@ class TrexPort(TrexObject):
     def __init__(self, parent, index):
         """ Create port object.
 
-        :param parent: parent module or chassis.
+        :param parent: parent chassis.
         :param index: port index, zero based
         """
         super().__init__(objType='port', objRef=index, parent=parent)
@@ -42,3 +44,44 @@ class TrexPort(TrexObject):
         params = {"port_id": int(self.ref),
                   "handler": self.handler}
         self.api.rpc.transmit("release", params)
+
+    def remove_all_streams(self):
+        params = {"port_id": int(self.ref),
+                  "handler": self.handler}
+        self.api.rpc.transmit('remove_all_streams', params)
+
+    def add_stream(self, name):
+        return TrexStream(self, index=len(self.streams), name=name)
+
+    def write_streams(self):
+        batch = []
+        lookup = {}
+        for stream in self.streams:
+            stream_id = lookup[stream.name]
+            next_id = -1
+
+            next = stream.get_next()
+            if next:
+                if next not in lookup:
+                    return self.err("stream dependency error - unable to find '{0}'".format(next))
+                next_id = lookup[next]
+
+            stream_json = stream.to_json()
+            stream_json['next_stream_id'] = next_id
+
+            params = {"handler": self.handler,
+                      "port_id": self.port_id,
+                      "stream_id": stream_id,
+                      "stream": stream_json}
+
+            cmd = RpcCmdData('add_stream', params, 'core')
+            batch.append(cmd)
+
+        rc = self.transmit_batch(batch)
+
+    @property
+    def streams(self):
+        """
+        :return: dictionary {name: object} of all streams.
+        """
+        return {str(s): s for s in self.get_objects_by_type('stream')}

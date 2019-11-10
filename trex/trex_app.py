@@ -114,9 +114,9 @@ class TrexServer(TrexObject):
     @property
     def ports(self):
         """
-        :return: dictionary {name: object} of all ports.
+        :return: dictionary {index: object} of all ports.
         """
-        return {str(p): p for p in self.get_objects_by_type('port')}
+        return {p: p for p in self.get_objects_by_type('port')}
 
     def _get_api_h(self):
         return self.api.get_api_h()
