@@ -4,13 +4,15 @@ Classes and utilities that represents TRex GUI application.
 :author: yoram@ignissoft.com
 """
 
+import random
 import getpass
 
 from trafficgenerator.tgn_app import TgnApp
 from trafficgenerator.tgn_utils import ApiType
+from .trex_object import TrexObject
+from .trex_port import TrexPort
 from .api.trex_stl_conn import Connection
 from .api.trex_event import EventsHandler
-from .trex_port import TrexPort
 
 
 def run_trex(ip, user, password, path):
@@ -28,6 +30,7 @@ class TrexApp(TgnApp):
         """
         super(self.__class__, self).__init__(logger, ApiType.socket)
         self.username = username
+        self.server = None
 
     def connect(self, ip, port=4501, async_port=4500, virtual=False):
         """ Connect to TRex server.
@@ -38,19 +41,54 @@ class TrexApp(TgnApp):
         :virtual: ???
         """
 
-        self.connection_info = {'username': self.username,
-                                'server': ip,
-                                'sync_port': port,
-                                'async_port': async_port,
-                                'virtual': virtual}
-
-        # async event handler manager
-        self.event_handler = EventsHandler(self)
-        self.conn = Connection(self.connection_info, self.logger, self)
-        self.conn.connect()
+        self.server = TrexServer(self.logger, self.username, ip, port, async_port, virtual)
+        self.server.connect()
+        return self.server
 
     def disconnect(self):
-        self.conn.disconnect()
+        if self.server:
+            self.server.disconnect()
+
+
+class TrexServer(TrexObject):
+    """ Represents single TRex server. """
+
+    def __init__(self, logger, username, ip, port=4501, async_port=4500, virtual=False):
+        """
+        :param logger: python logger
+        :param username: user name
+        :param ip: TRex server IP
+        :param port: RPC port
+        :param async_port: Async port
+        :param virtual: ???
+        """
+
+        self.logger = logger
+        self.username = username
+        self.ip = ip
+        self.port = port
+        self.async_port = async_port
+        self.virtual = virtual
+
+        super(self.__class__, self).__init__(objType='server', index='', parent=None, objRef=None)
+
+    def connect(self):
+        """ Connect to the TRex server. """
+
+        self.event_handler = EventsHandler(self)
+        self.connection_info = {'username': self.username,
+                                'server': self.ip,
+                                'sync_port': self.port,
+                                'async_port': self.async_port,
+                                'virtual': self.virtual}
+        self.api = Connection(self.connection_info, self.logger, self)
+        self.api.connect()
+        self.session_id = random.getrandbits(32)
+
+    def disconnect(self):
+        for port in self.ports.values():
+            port.release()
+        self.api.disconnect()
 
     def reserve_ports(self, locations, force=False, reset=True):
         """ Reserve ports and reset factory defaults.
@@ -64,17 +102,23 @@ class TrexApp(TgnApp):
         """
 
         for location in locations:
-            TrexPort(location)
-
+            TrexPort(parent=self, index=location).reserve(force)
         return self.ports
 
+    @property
+    def ports(self):
+        """
+        :return: dictionary {name: object} of all ports.
+        """
+        return {str(p): p for p in self.get_objects_by_type('port')}
+
     def _get_api_h(self):
-        return self.conn.get_api_h()
+        return self.api.get_api_h()
 
     # transmit request on the RPC link
     def _transmit(self, method_name, params=None, api_class='core'):
-        return self.conn.rpc.transmit(method_name, params, api_class)
+        return self.api.rpc.transmit(method_name, params, api_class)
 
     # transmit batch request on the RPC link
     def _transmit_batch(self, batch_list):
-        return self.conn.rpc.transmit_batch(batch_list)
+        return self.api.rpc.transmit_batch(batch_list)

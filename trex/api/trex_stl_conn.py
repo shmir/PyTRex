@@ -38,7 +38,7 @@ class CCommLink(object):
 
     def connect(self):
         if not self.virtual:
-            return self.rpc_link.connect()
+            self.rpc_link.connect()
 
     def disconnect(self):
         if not self.virtual:
@@ -130,20 +130,14 @@ class Connection:
             self.api_h = {'core': None}
 
     def connect(self):
-        '''
-            connect to the server(two channels)
-        '''
+        """ Connect to the server(two channels). """
 
         # first disconnect if already connected
         if self.is_connected():
             self.disconnect()
 
         # connect
-        rc = self.__connect()
-        if not rc:
-            self.disconnect()
-
-        return rc
+        self.__connect()
 
     def get_api_h(self):
         '''
@@ -155,7 +149,6 @@ class Connection:
         '''
             executes a barrier
             when it retruns, an async barrier is guaranteed
-
         '''
         return self.async_connection.barrier()
 
@@ -221,22 +214,14 @@ class Connection:
 # ######### private ################
 
     def __connect(self):
-        '''
-            connect to the server(two channels)
-        '''
 
         # start with the sync channel
         self.logger.info(f'Connecting to RPC server on {self.conn_info["server"]}:{self.conn_info["sync_port"]}')
-        rc = self.rpc.connect()
-        if not rc:
-            return rc
+        self.rpc.connect()
 
         # API sync
         rc = self.rpc.transmit('api_sync', params={'api_vers': self.api_vers}, api_class=None)
         self.logger.debug(rc)
-
-        if not rc:
-            return rc
 
         # get the API_H
         for api in rc.data()['api_vers']:

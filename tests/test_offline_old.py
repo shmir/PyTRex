@@ -14,6 +14,22 @@ from trex.trex_app import TrexApp
 
 
 @pytest.fixture(scope='module')
+def logger():
+    logger = logging.getLogger('trex')
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logging.StreamHandler(sys.stdout))
+    yield logger
+
+
+@pytest.fixture(scope='module')
+def app(pytestconfig, logger):
+    client = STLClient(server=pytestconfig.getoption('chassis'), verbose_level=LoggerApi.VERBOSE_HIGH)
+    client.connect()
+    yield client
+    client.disconnect()
+
+
+@pytest.fixture(scope='module')
 def client(pytestconfig):
     client = STLClient(server=pytestconfig.getoption('chassis'), verbose_level=LoggerApi.VERBOSE_HIGH)
     client.connect()
@@ -21,21 +37,6 @@ def client(pytestconfig):
     client.reset()
     yield client
     client.release()
-
-
-@pytest.fixture(scope='module')
-def logger():
-    logger = logging.getLogger('trex')
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(logging.StreamHandler(sys.stdout))
-
-
-@pytest.fixture(scope='module')
-def app(pytestconfig, logger):
-    trex = TrexApp(logger)
-    trex.connect(pytestconfig.getoption('chassis'))
-    yield client
-    trex.disconnect()
 
 
 class TestOffline:

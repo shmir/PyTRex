@@ -103,7 +103,10 @@ class JsonRpcClient:
     def send_msg(self, msg, retry=0):
         # REQ/RESP pattern in ZMQ requires no interrupts during the send
         with self.lock:
-            return self.__send_msg(msg, retry)
+            rc = self.__send_msg(msg, retry)
+        if rc.bad():
+            raise Exception(rc.err())
+        return rc
 
     def __send_msg(self, msg, retry=0):
         # print before
@@ -232,24 +235,19 @@ class JsonRpcClient:
 
         self.context = zmq.Context()
 
-        self.server = (server if server else self.server)
-        self.port = (port if port else self.port)
+        self.server = server if server else self.server
+        self.port = port if port else self.port
 
         #  Socket to talk to server
         self.transport = "tcp://{0}:{1}".format(self.server, self.port)
 
         self.socket = self.context.socket(zmq.REQ)
-        try:
-            self.socket.connect(self.transport)
-        except zmq.error.ZMQError as e:
-            return RC_ERR("ZMQ Error: Bad server or port name: " + str(e))
+        self.socket.connect(self.transport)
 
         self.socket.setsockopt(zmq.SNDTIMEO, 10000)
         self.socket.setsockopt(zmq.RCVTIMEO, 10000)
 
         self.connected = True
-
-        return RC_OK()
 
     def reconnect(self):
         # connect using current values

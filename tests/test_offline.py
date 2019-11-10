@@ -24,7 +24,7 @@ def trex(pytestconfig, logger):
 
 @pytest.fixture(scope='module')
 def ports(pytestconfig):
-    yield pytestconfig.getoption('chassis')
+    yield pytestconfig.getoption('ports')
 
 
 class TestOffline:
@@ -33,4 +33,4 @@ class TestOffline:
         pass
 
     def test_reserve_ports(self, trex, ports):
-        trex.reserve_ports(ports)
+        trex.server.reserve_ports(ports, force=True)

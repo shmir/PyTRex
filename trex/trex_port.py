@@ -15,7 +15,30 @@ class TrexPort(TrexObject):
         """ Create port object.
 
         :param parent: parent module or chassis.
-        :param index: port index in format module/port (both 0 based)
+        :param index: port index, zero based
+        """
+        super().__init__(objType='port', objRef=index, parent=parent)
+
+    def reserve(self, force=False):
+        """ Reserve port.
+
+        TRex -> Port -> [Force] Acquire.
+
+        :param force: True - take forcefully, False - fail if port is reserved by other user
         """
 
-        super().__init__(objType='port', objRef=index, parent=parent)
+        params = {"port_id": int(self.ref),
+                  "user": self.username,
+                  "session_id": self.session_id,
+                  "force": force}
+        rc = self.api.rpc.transmit("acquire", params)
+        self.handler = rc.data()
+
+    def release(self):
+        """ Release port.
+
+        TRex -> Port -> Release Acquire.
+        """
+        params = {"port_id": int(self.ref),
+                  "handler": self.handler}
+        self.api.rpc.transmit("release", params)

@@ -195,9 +195,7 @@ class CTRexAsyncClient():
         rc = self.barrier()
         if not rc:
             self.disconnect()
-            return rc
-
-        return RC_OK()
+            raise Exception('Failed to connect to the async channel')
 
     # disconnect
     def disconnect(self):
