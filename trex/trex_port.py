@@ -6,7 +6,7 @@ Classes and utilities that represents TRex port.
 
 
 from .trex_object import TrexObject
-from .trex_stream import TrexStream
+from .trex_stream import TrexStream, TrexYamlLoader
 from .api.trex_stl_types import RpcCmdData
 
 
@@ -53,31 +53,40 @@ class TrexPort(TrexObject):
     def add_stream(self, name):
         return TrexStream(self, index=len(self.streams), name=name)
 
-    def write_streams(self):
-        batch = []
-        lookup = {}
-        for stream in self.streams:
-            stream_id = lookup[stream.name]
-            next_id = -1
+    def load_streams(self, yaml_file):
+        """ Load streams from YAML file.
 
-            next = stream.get_next()
-            if next:
-                if next not in lookup:
-                    return self.err("stream dependency error - unable to find '{0}'".format(next))
-                next_id = lookup[next]
+        :param yaml_file: full path to yaml profile file.
+        """
+        yaml_loader = TrexYamlLoader(self, yaml_file)
+        yaml_loader.parse()
+
+    def save_streams(self, yaml_file):
+        """ Save streams to YAML file.
+
+        :param yaml_file: full path to yaml profile file.
+        """
+        raise NotImplementedError()
+
+    def write_streams(self):
+        """ Write all streams to server. """
+        batch = []
+        for name, stream in self.streams.items():
+            stream_id = list(self.streams.keys()).index(name) + 1
+            next_id = list(self.streams.keys()).index(stream.next) + 1 if stream.next else -1
 
             stream_json = stream.to_json()
             stream_json['next_stream_id'] = next_id
 
             params = {"handler": self.handler,
-                      "port_id": self.port_id,
+                      "port_id": int(self.ref),
                       "stream_id": stream_id,
                       "stream": stream_json}
 
             cmd = RpcCmdData('add_stream', params, 'core')
             batch.append(cmd)
 
-        rc = self.transmit_batch(batch)
+        self.api.rpc.transmit_batch(batch)
 
     @property
     def streams(self):

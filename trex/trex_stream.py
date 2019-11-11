@@ -1,6 +1,8 @@
 
+import os
 import base64
 import json
+import yaml
 
 from scapy.layers.inet import IP
 from scapy.layers.l2 import Dot3, Ether
@@ -425,7 +427,7 @@ class TrexStream(TrexObject):
         else:
             self.fields['flow_stats'] = flow_stats.to_json()
 
-    def __str__(self):
+    def __repr__(self):
         s = "Stream Name: {0}\n".format(self.name)
         s += "Stream Next: {0}\n".format(self.next)
         s += "Stream JSON:\n{0}\n".format(json.dumps(
@@ -438,29 +440,13 @@ class TrexStream(TrexObject):
         """
         return dict(self.fields)
 
-    def get_id(self):
-        """ Get the stream id after resolution  """
-        return self.id
-
     def has_custom_mac_addr(self):
         """ Return True if src or dst MAC were set as custom """
         return not self.is_default_mac
 
-    def get_name(self):
-        """ Get the stream name """
-        return self.name
-
-    def get_next(self):
-        """ Get next stream object """
-        return getattr(self, '__next__', None)
-
     def has_flow_stats(self):
         """ Return True if stream was configured with flow stats """
         return self.fields['flow_stats']['enabled']
-
-    def get_pkt(self):
-        """ Get packet as string """
-        return self.pkt
 
     def get_pkt_len(self, count_crc=True):
         """ Get packet number of bytes  """
@@ -477,9 +463,6 @@ class TrexStream(TrexObject):
                 self.get_pkt())
 
         return self.packet_desc
-
-    def get_mode(self):
-        return self.mode_desc
 
     @staticmethod
     def get_rate_from_field(rate_json):
@@ -509,3 +492,131 @@ class TrexStream(TrexObject):
         else:
             print("Nothing to dump")
         return dump
+
+
+class TrexYamlLoader:
+
+    def __init__(self, port, yaml_file):
+        self.port = port
+        self.yaml_path = os.path.dirname(yaml_file)
+        self.yaml_file = yaml_file
+
+    def __parse_packet(self, packet_dict):
+
+        packet_type = set(packet_dict).intersection(['binary', 'pcap'])
+        if len(packet_type) != 1:
+            raise STLError(
+                "Packet section must contain either 'binary' or 'pcap'")
+
+        if 'binary' in packet_type:
+            try:
+                pkt_str = base64.b64decode(packet_dict['binary'])
+            except TypeError:
+                raise STLError("'binary' field is not a valid packet format")
+
+            builder = STLPktBuilder(pkt_buffer=pkt_str)
+
+        elif 'pcap' in packet_type:
+            pcap = os.path.join(self.yaml_path, packet_dict['pcap'])
+
+            if not os.path.exists(pcap):
+                raise STLError("'pcap' - cannot find '{0}'".format(pcap))
+
+            builder = STLPktBuilder(pkt=pcap)
+
+        return builder
+
+    def __parse_mode(self, mode_obj):
+        if not mode_obj:
+            return None
+
+        rate_type = mode_obj.get('rate').get('type')
+        rate_value = mode_obj.get('rate').get('value')
+        if rate_type not in ['pps', 'bps_L1', 'bps_L2', 'percentage']:
+            raise STLError("'rate' must contain exactly one from 'pps', 'bps_L1', 'bps_L2', 'percentage'")
+
+        rate = {rate_type: rate_value}
+
+        mode_type = mode_obj.get('type')
+
+        if mode_type == 'continuous':
+            mode = STLTXCont(**rate)
+
+        elif mode_type == 'single_burst':
+            defaults = STLTXSingleBurst()
+            mode = STLTXSingleBurst(total_pkts=mode_obj.get('total_pkts',defaults.fields['total_pkts']), **rate)
+
+        elif mode_type == 'multi_burst':
+            defaults = STLTXMultiBurst()
+            mode = STLTXMultiBurst(pkts_per_burst=mode_obj.get('pkts_per_burst', defaults.fields['pkts_per_burst']),
+                                   ibg=mode_obj.get('ibg', defaults.fields['ibg']),
+                                   count=mode_obj.get('count', defaults.fields['count']),
+                                   **rate)
+
+        else:
+            raise STLError(
+                "mode type can be 'continuous', 'single_burst' or 'multi_burst")
+
+        return mode
+
+    def __parse_flow_stats(self, flow_stats_obj):
+
+        # no such object
+        if not flow_stats_obj or flow_stats_obj.get('enabled') is False:
+            return None
+
+        pg_id = flow_stats_obj.get('stream_id')
+        if pg_id is None:
+            raise STLError(
+                "Enabled RX stats section must contain 'stream_id' field")
+
+        return STLFlowStats(pg_id=pg_id)
+
+    def __parse_stream(self, yaml_object):
+        s_obj = yaml_object['stream']
+
+        # parse packet
+        packet = s_obj.get('packet')
+        if not packet:
+            raise STLError("YAML file must contain 'packet' field")
+
+        builder = self.__parse_packet(packet)
+
+        # mode
+        mode = self.__parse_mode(s_obj.get('mode'))
+
+        # rx stats
+        flow_stats = self.__parse_flow_stats(s_obj.get('flow_stats'))
+
+        # create the stream
+        stream = self.port.add_stream(name=yaml_object.get('name'))
+        stream.config(packet=builder,
+                      mode=mode,
+                      flow_stats=flow_stats,
+                      enabled=s_obj.get('enabled', True),
+                      self_start=s_obj.get('self_start', True),
+                      isg=s_obj.get('isg', 0.0),
+                      next=yaml_object.get('next'),
+                      action_count=s_obj.get('action_count', 0),
+                      mac_src_override_by_pkt=s_obj.get('mac_src_override_by_pkt', 0),
+                      mac_dst_override_mode=s_obj.get('mac_src_override_by_pkt', 0))
+
+        # hack the VM fields for now
+        if 'vm' in s_obj:
+            stream.fields['vm'].update(s_obj['vm'])
+
+        return stream
+
+    def parse(self):
+        with open(self.yaml_file, 'r') as f:
+            # read YAML and pass it down to stream object
+            yaml_str = f.read()
+
+            try:
+                objects = yaml.safe_load(yaml_str)
+            except yaml.parser.ParserError as e:
+                raise STLError(str(e))
+
+            streams = [self.__parse_stream(object) for object in objects]
+
+            return streams

@@ -44,7 +44,8 @@ class TestOffline:
         trex_ports = trex.server.reserve_ports(ports, force=True)
         assert len(trex_ports) == 2
 
-    def test_create_stream(self, trex, ports):
+    def test_load_streams(self, trex, ports):
         trex_port = list(trex.server.reserve_ports(ports, force=True).values())[0]
         trex_port.remove_all_streams()
-        trex_stream = trex_port.add_stream('Stream 1-1')
+        trex_port.load_streams('profiles/test_profile_1.yaml')
+        trex_port.write_streams()
