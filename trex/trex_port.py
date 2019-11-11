@@ -107,8 +107,6 @@ class TrexPort(TrexObject):
         """
         super().__init__(objType='port', objRef=index, parent=parent)
 
-        self.port_stats = CPortStats(self)
-
     def reserve(self, force=False):
         """ Reserve port.
 
@@ -219,10 +217,13 @@ class TrexPort(TrexObject):
     #
 
     def clear_stats(self):
-        return self.port_stats.clear_stats()
+        values = self.transmit('get_port_xstats_values').data()
+        names = self.transmit('get_port_xstats_names').data()
+        self.base_stats = dict(zip(names['xstats_names'], values['xstats_values']))
 
     def get_stats(self):
-        return self.port_stats.get_stats()
+        xvalues = self.transmit('get_port_xstats_values').data()
+        values = self.transmit('get_port_stats').data()
 
     #
     # Private.

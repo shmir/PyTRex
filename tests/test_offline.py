@@ -56,16 +56,18 @@ class TestOffline:
         assert trex_port.get_port_state() == PortState.Streams
 
     def test_traffic(self, trex, ports):
-        trex_port = list(trex.server.reserve_ports(ports, force=True).values())[0]
-        trex_port.remove_all_streams()
-        trex_port.load_streams('profiles/test_profile_1.yaml')
-        trex_port.write_streams()
+        trex_ports = trex.server.reserve_ports(ports, force=True)
+        tx_port = list(trex_ports.values())[0]
+        rx_port = list(trex_ports.values())[1]
+        tx_port.remove_all_streams()
+        tx_port.load_streams('profiles/test_profile_1.yaml')
+        tx_port.write_streams()
 
-        trex_port.clear_stats()
-        print(json.dumps(trex_port.get_stats(), indent=2))
+        rx_port.clear_stats()
+        print(json.dumps(rx_port.get_stats(), indent=2))
 
         mult_obj = decode_multiplier('1', allow_update=False, divide_count=1)
-        trex_port.start_transmit(mul=mult_obj, duration=-1, force=False, mask=None)
-        trex_port.wait_transmit()
+        tx_port.start_transmit(mul=mult_obj, duration=-1, force=False, mask=None)
+        tx_port.wait_transmit()
         time.sleep(2)
-        print(json.dumps(trex_port.get_stats(), indent=2))
+        print(json.dumps(rx_port.get_stats(), indent=2))
