@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 
 import sys
 from collections import OrderedDict, namedtuple
@@ -121,12 +120,6 @@ def RC_ERR(err=""):
 
 def RC_WARN(warn):
     return RC(True, warn, is_warn=True)
-
-
-def is_integer(arg):
-    if type(arg) is int:
-        return True
-    return False
 
 # validate type of arg
 # example1: validate_type('somearg', somearg, [int, long])

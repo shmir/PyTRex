@@ -4,10 +4,96 @@ Classes and utilities that represents TRex port.
 :author: yoram@ignissoft.com
 """
 
+import re
+import time
+from enum import Enum
 
 from .trex_object import TrexObject
 from .trex_stream import TrexStream, TrexYamlLoader
+from .trex_statistics_view import CPortStats
 from .api.trex_stl_types import RpcCmdData
+
+
+MASK_ALL = ((1 << 64) - 1)
+
+
+def decode_multiplier(val, allow_update=False, divide_count=1):
+
+    factor_table = {None: 1, 'k': 1e3, 'm': 1e6, 'g': 1e9}
+    pattern = r"^(\d+(\.\d+)?)(((k|m|g)?(bpsl1|pps|bps))|%)?"
+
+    # do we allow updates ?  +/-
+    if not allow_update:
+        pattern += "$"
+        match = re.match(pattern, val)
+        op = None
+    else:
+        pattern += r"([\+\-])?$"
+        match = re.match(pattern, val)
+        if match:
+            op = match.group(7)
+        else:
+            op = None
+
+    result = {}
+
+    if not match:
+        return None
+
+    # value in group 1
+    value = float(match.group(1))
+
+    # decode unit as whole
+    unit = match.group(3)
+
+    # k,m,g
+    factor = match.group(5)
+
+    # type of multiplier
+    m_type = match.group(6)
+
+    # raw type(factor)
+    if not unit:
+        result['type'] = 'raw'
+        result['value'] = value
+
+    # percentage
+    elif unit == '%':
+        result['type'] = 'percentage'
+        result['value'] = value
+
+    elif m_type == 'bps':
+        result['type'] = 'bps'
+        result['value'] = value * factor_table[factor]
+
+    elif m_type == 'pps':
+        result['type'] = 'pps'
+        result['value'] = value * factor_table[factor]
+
+    elif m_type == 'bpsl1':
+        result['type'] = 'bpsl1'
+        result['value'] = value * factor_table[factor]
+
+    if op == "+":
+        result['op'] = "add"
+    elif op == "-":
+        result['op'] = "sub"
+    else:
+        result['op'] = "abs"
+
+    if result['op'] != 'percentage':
+        result['value'] = result['value'] / divide_count
+
+    return result
+
+
+class PortState(Enum):
+    Down = 'down'
+    Idle = 'idle'
+    Streams = 'streams'
+    Tx = 'tx'
+    Pause = 'pause'
+    Pcap_Tx = 'pcap_tx'
 
 
 class TrexPort(TrexObject):
@@ -20,6 +106,8 @@ class TrexPort(TrexObject):
         :param index: port index, zero based
         """
         super().__init__(objType='port', objRef=index, parent=parent)
+
+        self.port_stats = CPortStats(self)
 
     def reserve(self, force=False):
         """ Reserve port.
@@ -41,14 +129,14 @@ class TrexPort(TrexObject):
 
         TRex -> Port -> Release Acquire.
         """
-        params = {"port_id": int(self.ref),
-                  "handler": self.handler}
-        self.api.rpc.transmit("release", params)
+        self.transmit('release')
+
+    #
+    # Streams.
+    #
 
     def remove_all_streams(self):
-        params = {"port_id": int(self.ref),
-                  "handler": self.handler}
-        self.api.rpc.transmit('remove_all_streams', params)
+        self.transmit('remove_all_streams')
 
     def add_stream(self, name):
         return TrexStream(self, index=len(self.streams), name=name)
@@ -94,3 +182,58 @@ class TrexPort(TrexObject):
         :return: dictionary {name: object} of all streams.
         """
         return {str(s): s for s in self.get_objects_by_type('stream')}
+
+    #
+    # Control.
+    #
+
+    def get_port_state(self):
+        rc = self.transmit('get_port_status')
+        return PortState(rc.data()['state'].lower())
+
+    def is_transmitting(self):
+        return self.get_port_state() in [PortState.Tx, PortState.Pcap_Tx]
+
+    def start_transmit(self, mul, duration, force, mask=MASK_ALL, start_at_ts=0):
+
+        if self.get_port_state() == PortState.Idle:
+            raise Exception('unable to start traffic - no streams attached to port')
+
+        params = {"mul": mul,
+                  "duration": duration,
+                  "force": force,
+                  "core_mask": mask,
+                  'start_at_ts': start_at_ts}
+        self.transmit("start_traffic", params)
+
+    def stop_transmit(self):
+        self.transmit('stop_traffic')
+        self.wait_transmit()
+
+    def wait_transmit(self):
+        while self.is_transmitting():
+            time.sleep(1)
+
+    #
+    # Statistics.
+    #
+
+    def clear_stats(self):
+        return self.port_stats.clear_stats()
+
+    def get_stats(self):
+        return self.port_stats.get_stats()
+
+    #
+    # Private.
+    #
+
+    def transmit(self, command, params={}):
+        """ Transmit RPC command.
+
+        :param command: RPC command
+        :param params: command parameters
+        """
+        params['port_id'] = int(self.ref)
+        params['handler'] = self.handler
+        return self.api.rpc.transmit(command, params)

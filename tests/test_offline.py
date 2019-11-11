@@ -2,8 +2,11 @@
 import sys
 import pytest
 import logging
+import time
+import json
 
 from trex.trex_app import TrexApp
+from trex.trex_port import PortState, decode_multiplier
 
 
 @pytest.fixture(scope='module')
@@ -47,5 +50,22 @@ class TestOffline:
     def test_load_streams(self, trex, ports):
         trex_port = list(trex.server.reserve_ports(ports, force=True).values())[0]
         trex_port.remove_all_streams()
+        assert trex_port.get_port_state() == PortState.Idle
         trex_port.load_streams('profiles/test_profile_1.yaml')
         trex_port.write_streams()
+        assert trex_port.get_port_state() == PortState.Streams
+
+    def test_traffic(self, trex, ports):
+        trex_port = list(trex.server.reserve_ports(ports, force=True).values())[0]
+        trex_port.remove_all_streams()
+        trex_port.load_streams('profiles/test_profile_1.yaml')
+        trex_port.write_streams()
+
+        trex_port.clear_stats()
+        print(json.dumps(trex_port.get_stats(), indent=2))
+
+        mult_obj = decode_multiplier('1', allow_update=False, divide_count=1)
+        trex_port.start_transmit(mul=mult_obj, duration=-1, force=False, mask=None)
+        trex_port.wait_transmit()
+        time.sleep(2)
+        print(json.dumps(trex_port.get_stats(), indent=2))

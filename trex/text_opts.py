@@ -1,8 +1,9 @@
-#!/usr/bin/python3
 
 import json
 import re
 import sys
+from texttable import Texttable
+
 
 TEXT_CODES = {'bold': {'start': '\x1b[1m',
                        'end': '\x1b[22m'},
@@ -222,5 +223,33 @@ def pretty_json(json_str, use_colors=True):
     return pretty_str
 
 
-if __name__ == "__main__":
+class TRexTextTable(Texttable):
+
+    def __init__(self):
+        Texttable.__init__(self)
+        # set class attributes so that it'll be more like TRex standard output
+        self.set_chars(['-', '|', '-', '-'])
+        self.set_deco(Texttable.HEADER | Texttable.VLINES)
+
+
+class TRexTextInfo(Texttable):
+
+    def __init__(self):
+        Texttable.__init__(self)
+        # set class attributes so that it'll be more like TRex standard output
+        self.set_chars(['-', ':', '-', '-'])
+        self.set_deco(Texttable.VLINES)
+
+
+def generate_trex_stats_table():
     pass
+
+
+def print_table_with_header(texttable_obj, header="", untouched_header="",
+                            buffer=sys.stdout):
+    header = header.replace("_", " ").title() + untouched_header
+    # print(format_text(header, 'cyan', 'underline') + "\n", file=buffer)
+    print(header)
+
+    # print((texttable_obj.draw() + "\n"), file=buffer)
+    print((texttable_obj.draw()))

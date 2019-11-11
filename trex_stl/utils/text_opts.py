@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 
 import json
 import re
@@ -220,7 +219,3 @@ def pretty_json(json_str, use_colors=True):
         pass
 
     return pretty_str
-
-
-if __name__ == "__main__":
-    pass
