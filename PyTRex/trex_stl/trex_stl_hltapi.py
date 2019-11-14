@@ -9,18 +9,18 @@ from time import sleep
 
 from scapy.layers.inet import IP, IPv6, TCP
 
-from trex_stl_lib.trex_stl_async_client import (STLClient, STLFlowStats, STLPktBuilder,
+from .trex_stl_lib.trex_stl_async_client import (STLClient, STLFlowStats, STLPktBuilder,
                                                 STLProfile, STLScVmRaw, STLStream,
                                                 STLTXCont, STLTXMultiBurst,
                                                 STLTXSingleBurst, STLVmFixIpv4,
                                                 STLVmFlowVar, STLVmTrimPktSize,
                                                 STLVmWrFlowVar, STLVmWrMaskFlowVar,
                                                 ipv4_str_to_num)
-from trex_stl_lib.trex_stl_exceptions import STLError
-from trex_stl_lib.trex_stl_packet_builder_scapy import is_valid_ipv4_ret, is_valid_ipv6_ret
+from .trex_stl_lib.trex_stl_exceptions import STLError
+from .trex_stl_lib.trex_stl_packet_builder_scapy import is_valid_ipv4_ret, is_valid_ipv6_ret
 
-from trex_stl_lib.trex_stl_types import UDP, Dot1Q, Ether, LRU_cache, is_integer, mac2str
-from trex_stl_lib.utils.common import get_number
+from .trex_stl_lib.trex_stl_types import UDP, Dot1Q, Ether, LRU_cache, is_integer, mac2str
+from .trex_stl_lib.utils.common import get_number
 
 '''
 Supported functions/arguments/defaults:

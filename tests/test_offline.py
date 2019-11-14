@@ -5,8 +5,8 @@ import logging
 import time
 import json
 
-from trex.trex_app import TrexApp
-from trex.trex_port import PortState, decode_multiplier
+from PyTRex.trex.trex_app import TrexApp
+from PyTRex.trex.trex_port import PortState, decode_multiplier
 
 
 @pytest.fixture(scope='module')

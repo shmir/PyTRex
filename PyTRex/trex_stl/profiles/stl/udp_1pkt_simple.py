@@ -1,4 +1,4 @@
-from trex_stl_lib import Ether, IP, STLPktBuilder, STLStream, STLTXCont, UDP
+from .trex_stl_lib import Ether, IP, STLPktBuilder, STLStream, STLTXCont, UDP
 
 
 class STLS1(object):

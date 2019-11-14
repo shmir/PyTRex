@@ -16,7 +16,7 @@ Author:
 from .trex_stl_service import STLService, STLServiceFilter
 from .trex_stl_dhcp_parser import DHCPParser
 
-from trex_stl_lib.trex_stl_exceptions import STLError
+from .trex_stl_lib.trex_stl_exceptions import STLError
 
 from scapy.layers.dhcp import DHCP, BOOTP
 from scapy.layers.l2 import Ether

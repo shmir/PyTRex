@@ -13,8 +13,8 @@ import yaml
 from scapy.contrib.capwap import (CAPWAP_DATA, CAPWAP_PKTS, CAPWAP_Header,
                                   CAPWAP_Wireless_Specific_Information_IEEE802_11,
                                   Dot11_swapped, Dot11QoS)
-from trex_stl_lib.external_libs.trex_openssl.trex_openssl import SSL_CONST
-from trex_stl_lib.services.trex_stl_ap import (IP, UDP, Ether,
+from .trex_stl_lib.external_libs.trex_openssl.trex_openssl import SSL_CONST
+from .trex_stl_lib.services.trex_stl_ap import (IP, UDP, Ether,
                                                STLServiceApAddClients,
                                                STLServiceApBgMaintenance,
                                                STLServiceApDiscoverWLC,
@@ -22,12 +22,12 @@ from trex_stl_lib.services.trex_stl_ap import (IP, UDP, Ether,
                                                STLServiceApJoinWLC,
                                                STLServiceApShutdownDTLS,
                                                STLServiceBufferedCtx)
-from trex_stl_lib.trex_stl_packet_builder_scapy import is_valid_ipv4_ret
-from trex_stl_lib.trex_stl_streams import STLProfile
-from trex_stl_lib.trex_stl_types import validate_type
-from trex_stl_lib.utils import (increase_mac, int2str, mac2str,
+from .trex_stl_lib.trex_stl_packet_builder_scapy import is_valid_ipv4_ret
+from .trex_stl_lib.trex_stl_streams import STLProfile
+from .trex_stl_lib.trex_stl_types import validate_type
+from .trex_stl_lib.utils import (increase_mac, int2str, mac2str,
                                 str2ip, str2mac)
-from trex_stl_lib.utils.common import get_current_user, natural_sorted_key
+from .trex_stl_lib.utils.common import get_current_user, natural_sorted_key
 
 import libcrypto
 import libssl
