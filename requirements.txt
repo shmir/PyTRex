@@ -1,6 +1,4 @@
-pytest
-
-scapy
-zmq
-
-pytrafficgen
+#pytest==5.2.2
+scapy==2.4.3
+pyzmq==18.1.1
+pytrafficgen==1.5.5

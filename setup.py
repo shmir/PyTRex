@@ -1,8 +1,13 @@
 from setuptools import find_packages, setup
 
+
+with open('requirements.txt') as f:
+    required = f.read().splitlines()
+install_requires = [r for r in required if r and r[0] != '#' and not r.startswith('git')]
+
 setup(
     name='trex_stl_lib',
-    version='0.4',
+    version='0.5',
     description='Trex Stateless library',
 
     url='https://github.com/shmir/trex_stl_lib',
@@ -14,13 +19,16 @@ setup(
     packages=find_packages(),
     include_package_data=True,
 
-    install_requires=[
-        'scapy',
-        'simpy',
-        'pyzmq',
-        'texttable',
-        'pyyaml',
-        'jsonrpclib-pelix',
-        'pytest'
-    ],
+    install_requires=install_requires,
+    tests_require=['pytest'],
 )
+
+# install_requires = [
+#                        'scapy',
+#                        'simpy',
+#                        'pyzmq',
+#                        'texttable',
+#                        'pyyaml',
+#                        'jsonrpclib-pelix',
+#                        'pytest'
+#                    ],
