@@ -6,7 +6,7 @@ with open('requirements.txt') as f:
 install_requires = [r for r in required if r and r[0] != '#' and not r.startswith('git')]
 
 setup(
-    name='trex_stl_lib',
+    name='PyTRex',
     version='0.5',
     description='Trex Stateless library',
 
