@@ -6,7 +6,7 @@ with open('requirements.txt') as f:
 install_requires = [r for r in required if r and r[0] != '#' and not r.startswith('git')]
 
 setup(
-    name='PyTRex',
+    name='pytrex',
     version='0.5',
     description='Trex Stateless library',
 
@@ -22,13 +22,3 @@ setup(
     install_requires=install_requires,
     tests_require=['pytest'],
 )
-
-# install_requires = [
-#                        'scapy',
-#                        'simpy',
-#                        'pyzmq',
-#                        'texttable',
-#                        'pyyaml',
-#                        'jsonrpclib-pelix',
-#                        'pytest'
-#                    ],
