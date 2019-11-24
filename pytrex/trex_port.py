@@ -10,7 +10,6 @@ from enum import Enum
 
 from .trex_object import TrexObject
 from .trex_stream import TrexStream, TrexYamlLoader
-from .trex_statistics_view import CPortStats
 from .api.trex_stl_types import RpcCmdData
 
 
@@ -180,13 +179,6 @@ class TrexPort(TrexObject):
 
         self.api.rpc.transmit_batch(batch)
 
-    @property
-    def streams(self):
-        """
-        :return: dictionary {name: object} of all streams.
-        """
-        return {str(s): s for s in self.get_objects_by_type('stream')}
-
     #
     # Control.
     #
@@ -259,3 +251,10 @@ class TrexPort(TrexObject):
         params['port_id'] = int(self.ref)
         params['handler'] = self.handler
         return self.api.rpc.transmit(command, params)
+
+    @property
+    def streams(self):
+        """
+        :return: dictionary {name: object} of all streams.
+        """
+        return {s.name: s for s in self.get_objects_by_type('stream')}

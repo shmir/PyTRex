@@ -88,7 +88,7 @@ class TestOffline:
         port_0.load_streams('profiles/test_profile_1.yaml')
         port_0.write_streams()
         port_1.remove_all_streams()
-        port_1.load_streams('profiles/test_profile_1.yaml')
+        port_1.load_streams('profiles/test_profile_2.yaml')
         port_1.write_streams()
 
         port_0.clear_stats()
@@ -101,3 +101,21 @@ class TestOffline:
         print(json.dumps(port_1_stats, indent=2))
         assert port_0_stats['ipackets'] == 300
         assert port_1_stats['ipackets'] == 300
+
+    def test_streams(self, trex, ports):
+        trex_ports = trex.server.reserve_ports(ports, force=True)
+        port_0 = list(trex_ports.values())[0]
+        port_1 = list(trex_ports.values())[1]
+        port_0.remove_all_streams()
+        port_0.load_streams('profiles/test_profile_1.yaml')
+        port_0.write_streams()
+        port_1.remove_all_streams()
+        port_1.load_streams('profiles/test_profile_2.yaml')
+        port_1.write_streams()
+
+        streams = port_0.streams
+
+        rc = trex.server.api.rpc.transmit('get_active_pgids')
+        ids = rc.data()['ids']['flow_stats']
+        rc = trex.server.api.rpc.transmit('get_pgid_stats', params={'pgids': ids})
+        print(json.dumps(rc.data()['flow_stats'], indent=2))

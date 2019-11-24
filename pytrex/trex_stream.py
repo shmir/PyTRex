@@ -7,7 +7,6 @@ import yaml
 from scapy.layers.inet import IP
 from scapy.layers.l2 import Dot3, Ether
 
-from .trex_stl_exceptions import STLArgumentError, STLError
 from .trex_stl_packet_builder_scapy import STLPktBuilder
 from .text_opts import format_num
 from .trex_object import TrexObject
@@ -57,7 +56,7 @@ class STLTXMode:
             pps = 1.0
         else:
             if len([x for x in args if x is not None]) > 1:
-                raise STLError(f'exactly one parameter from {args} should be provided')
+                raise Exception(f'exactly one parameter from {args} should be provided')
 
         self.fields = {'rate': {}}
 
@@ -75,7 +74,7 @@ class STLTXMode:
 
         elif percentage is not None:
             if not(percentage > 0 and percentage <= 100):
-                raise STLArgumentError('percentage', percentage)
+                raise Exception('percentage', percentage)
 
             self.fields['rate']['type'] = 'percentage'
             self.fields['rate']['value'] = percentage
@@ -134,7 +133,7 @@ class STLTXSingleBurst(STLTXMode):
         """
 
         if not isinstance(total_pkts, int):
-            raise STLArgumentError('total_pkts', total_pkts)
+            raise Exception('total_pkts', total_pkts)
 
         super(STLTXSingleBurst, self).__init__(**kwargs)
 
@@ -181,13 +180,13 @@ class STLTXMultiBurst(STLTXMode):
         """
 
         if not isinstance(pkts_per_burst, int):
-            raise STLArgumentError('pkts_per_burst', pkts_per_burst)
+            raise Exception('pkts_per_burst', pkts_per_burst)
 
         if not isinstance(ibg, (int, float)):
-            raise STLArgumentError('ibg', ibg)
+            raise Exception('ibg', ibg)
 
         if not isinstance(count, int):
-            raise STLArgumentError('count', count)
+            raise Exception('count', count)
 
         super(STLTXMultiBurst, self).__init__(**kwargs)
 
@@ -348,7 +347,7 @@ class TrexStream(TrexObject):
         """
 
         if(type(mode) == STLTXCont) and(next is not None):
-            raise STLError("Continuous stream cannot have a next stream ID")
+            raise Exception("Continuous stream cannot have a next stream ID")
 
         # tag for the stream and next - can be anything
         self.next = next
@@ -505,14 +504,14 @@ class TrexYamlLoader:
 
         packet_type = set(packet_dict).intersection(['binary', 'pcap'])
         if len(packet_type) != 1:
-            raise STLError(
+            raise Exception(
                 "Packet section must contain either 'binary' or 'pcap'")
 
         if 'binary' in packet_type:
             try:
                 pkt_str = base64.b64decode(packet_dict['binary'])
             except TypeError:
-                raise STLError("'binary' field is not a valid packet format")
+                raise Exception("'binary' field is not a valid packet format")
 
             builder = STLPktBuilder(pkt_buffer=pkt_str)
 
@@ -520,7 +519,7 @@ class TrexYamlLoader:
             pcap = os.path.join(self.yaml_path, packet_dict['pcap'])
 
             if not os.path.exists(pcap):
-                raise STLError("'pcap' - cannot find '{0}'".format(pcap))
+                raise Exception("'pcap' - cannot find '{0}'".format(pcap))
 
             builder = STLPktBuilder(pkt=pcap)
 
@@ -533,7 +532,7 @@ class TrexYamlLoader:
         rate_type = mode_obj.get('rate').get('type')
         rate_value = mode_obj.get('rate').get('value')
         if rate_type not in ['pps', 'bps_L1', 'bps_L2', 'percentage']:
-            raise STLError("'rate' must contain exactly one from 'pps', 'bps_L1', 'bps_L2', 'percentage'")
+            raise Exception("'rate' must contain exactly one from 'pps', 'bps_L1', 'bps_L2', 'percentage'")
 
         rate = {rate_type: rate_value}
 
@@ -544,7 +543,7 @@ class TrexYamlLoader:
 
         elif mode_type == 'single_burst':
             defaults = STLTXSingleBurst()
-            mode = STLTXSingleBurst(total_pkts=mode_obj.get('total_pkts',defaults.fields['total_pkts']), **rate)
+            mode = STLTXSingleBurst(total_pkts=mode_obj.get('total_pkts', defaults.fields['total_pkts']), **rate)
 
         elif mode_type == 'multi_burst':
             defaults = STLTXMultiBurst()
@@ -554,7 +553,7 @@ class TrexYamlLoader:
                                    **rate)
 
         else:
-            raise STLError(
+            raise Exception(
                 "mode type can be 'continuous', 'single_burst' or 'multi_burst")
 
         return mode
@@ -567,7 +566,7 @@ class TrexYamlLoader:
 
         pg_id = flow_stats_obj.get('stream_id')
         if pg_id is None:
-            raise STLError(
+            raise Exception(
                 "Enabled RX stats section must contain 'stream_id' field")
 
         return STLFlowStats(pg_id=pg_id)
@@ -576,9 +575,7 @@ class TrexYamlLoader:
         s_obj = yaml_object['stream']
 
         # parse packet
-        packet = s_obj.get('packet')
-        if not packet:
-            raise STLError("YAML file must contain 'packet' field")
+        packet = s_obj['packet']
 
         builder = self.__parse_packet(packet)
 
@@ -615,7 +612,7 @@ class TrexYamlLoader:
             try:
                 objects = yaml.safe_load(yaml_str)
             except yaml.parser.ParserError as e:
-                raise STLError(str(e))
+                raise Exception(str(e))
 
             streams = [self.__parse_stream(object) for object in objects]
 

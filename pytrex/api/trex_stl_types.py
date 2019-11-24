@@ -2,7 +2,6 @@
 import sys
 from collections import OrderedDict, namedtuple
 
-from ..trex_stl_exceptions import STLError, STLTypeError
 from ..text_opts import format_text
 
 RpcCmdData = namedtuple('RpcCmdData', ['method', 'params', 'api_class'])
@@ -139,26 +138,22 @@ def validate_type(arg_name, arg, valid_types):
        type(valid_types) is type):      # old style class
         if isinstance(arg, valid_types):
             return
-        raise STLTypeError(arg_name, type(arg), valid_types)
+        raise Exception(arg_name, type(arg), valid_types)
     else:
-        raise STLError(
+        raise Exception(
             'validate_type: valid_types should '
             + 'be type or list or tuple of types')
 
 
 def validate_choice(arg_name, arg, choices):
     if arg is not None and arg not in choices:
-        raise STLError("validate_choice: argument '{0}' "
-                       + "can only be one of '{1}'"
-                       .format(arg_name, choices))
+        raise Exception("validate_choice: argument '{0}' " + "can only be one of '{1}'".format(arg_name, choices))
 
 
 # throws STLError if not exactly one argument is present
 def verify_exclusive_arg(args_list):
     if not(len(list([x for x in args_list if x is not None])) == 1):
-        raise STLError(
-            'exactly one parameter from {0} should be provided'
-            .format(args_list))
+        raise Exception('exactly one parameter from {0} should be provided'.format(args_list))
 
 
 def listify(x):
