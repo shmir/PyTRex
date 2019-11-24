@@ -2,11 +2,11 @@
 import sys
 import pytest
 import logging
-import time
 import json
 
 from pytrex.trex_app import TrexApp
-from pytrex.trex_port import PortState, decode_multiplier
+from pytrex.trex_port import PortState
+from pytrex.trex_statistics_view import TextPortStatistics, TrexStreamStatistics
 
 
 @pytest.fixture(scope='module')
@@ -91,9 +91,7 @@ class TestOffline:
         port_1.load_streams('profiles/test_profile_2.yaml')
         port_1.write_streams()
 
-        port_0.clear_stats()
-        port_1.clear_stats()
-
+        trex.server.clear_stats()
         trex.server.start_transmit(True)
         port_0_stats = port_0.read_stats()
         port_1_stats = port_1.read_stats()
@@ -101,6 +99,10 @@ class TestOffline:
         print(json.dumps(port_1_stats, indent=2))
         assert port_0_stats['ipackets'] == 300
         assert port_1_stats['ipackets'] == 300
+
+        port_stats_view = TextPortStatistics(trex.server)
+        port_stats_view.read()
+        print(json.dumps(port_stats_view.statistics, indent=2))
 
     def test_streams(self, trex, ports):
         trex_ports = trex.server.reserve_ports(ports, force=True)
@@ -113,9 +115,8 @@ class TestOffline:
         port_1.load_streams('profiles/test_profile_2.yaml')
         port_1.write_streams()
 
-        streams = port_0.streams
+        stream_stats_view = TrexStreamStatistics(trex.server)
+        stream_stats_view.read()
 
-        rc = trex.server.api.rpc.transmit('get_active_pgids')
-        ids = rc.data()['ids']['flow_stats']
-        rc = trex.server.api.rpc.transmit('get_pgid_stats', params={'pgids': ids})
-        print(json.dumps(rc.data()['flow_stats'], indent=2))
+        trex.server.clear_stats()
+        trex.server.start_transmit(True)

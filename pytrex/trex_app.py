@@ -112,6 +112,11 @@ class TrexServer(TrexObject):
     def get_supported_cmds(self):
         return self.api.rpc.transmit('get_supported_cmds', {}).rc_list[0].data
 
+    def clear_stats(self, *ports):
+        ports = ports if ports else list(self.ports.values())
+        for port in ports:
+            port.clear_stats()
+
     def start_transmit(self, blocking=False, *ports):
         """ Start traffic on list of ports.
 
