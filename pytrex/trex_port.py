@@ -106,6 +106,12 @@ class TrexPort(TrexObject):
         :param index: port index, zero based
         """
         super().__init__(objType='port', objRef=index, parent=parent)
+        self.mul = decode_multiplier('1', allow_update=False, divide_count=1)
+        self.duration = -1
+        self.force = False
+        self.mask = MASK_ALL
+        self.statistics = None
+        self.xstatistics = None
 
     def reserve(self, force=False):
         """ Reserve port.
@@ -192,17 +198,20 @@ class TrexPort(TrexObject):
     def is_transmitting(self):
         return self.get_port_state() in [PortState.Tx, PortState.Pcap_Tx]
 
-    def start_transmit(self, mul, duration, force, mask=MASK_ALL, start_at_ts=0):
+    def start_transmit(self, blocking=False):
 
         if self.get_port_state() == PortState.Idle:
             raise Exception('unable to start traffic - no streams attached to port')
 
-        params = {"mul": mul,
-                  "duration": duration,
-                  "force": force,
-                  "core_mask": mask,
-                  'start_at_ts': start_at_ts}
+        params = {"mul": self.mul,
+                  "duration": self.duration,
+                  "force": self.force,
+                  "core_mask": self.mask,
+                  'start_at_ts': self.start_at_ts}
         self.transmit("start_traffic", params)
+
+        if blocking:
+            self.wait_transmit()
 
     def stop_transmit(self):
         self.transmit('stop_traffic')
@@ -218,12 +227,24 @@ class TrexPort(TrexObject):
 
     def clear_stats(self):
         values = self.transmit('get_port_xstats_values').data()
-        names = self.transmit('get_port_xstats_names').data()
-        self.base_stats = dict(zip(names['xstats_names'], values['xstats_values']))
+        self.stat_names = self.transmit('get_port_xstats_names').data()
+        self.base_xstats = dict(zip(self.stat_names['xstats_names'], values['xstats_values']))
+        self.base_stats = self.transmit('get_port_stats').data()
+        self.statistics = self.base_stats
+        self.xstatistics = self.base_xstats
 
-    def get_stats(self):
-        xvalues = self.transmit('get_port_xstats_values').data()
-        values = self.transmit('get_port_stats').data()
+    def read_stats(self):
+        self.statistics = self.transmit('get_port_stats').data()
+        for stat, value in self.statistics.items():
+            self.statistics[stat] = value - self.base_stats[stat]
+        return self.statistics
+
+    def read_xstats(self):
+        values = self.transmit('get_port_xstats_values').data()
+        self.xstatistics = dict(zip(self.stat_names['xstats_names'], values['xstats_values']))
+        for stat, value in self.xstatistics.items():
+            self.statistics[stat] = value - self.base_xstats[stat]
+        return self.xstatistics
 
     #
     # Private.

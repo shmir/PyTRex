@@ -6,6 +6,7 @@ Classes and utilities that represents TRex GUI application.
 
 import random
 import getpass
+import time
 
 from trafficgenerator.tgn_app import TgnApp
 from trafficgenerator.tgn_utils import ApiType
@@ -111,12 +112,57 @@ class TrexServer(TrexObject):
     def get_supported_cmds(self):
         return self.api.rpc.transmit('get_supported_cmds', {}).rc_list[0].data
 
+    def start_transmit(self, blocking=False, *ports):
+        """ Start traffic on list of ports.
+
+        If possible, synchroniz start of traffic, else, strat .
+
+        :param blocking: True - wait for traffic end, False - return after traffic start.
+        :param ports: list of ports to start traffic on, if empty start on all ports.
+        """
+
+        ports = ports if ports else list(self.ports.values())
+
+        synchronized = True
+        if not len(ports) % 2:
+            for port in ports:
+                if list(self.ports.values()).index(port) ^ 1 not in list(self.ports.keys()):
+                    synchronized = False
+        else:
+            synchronized = False
+
+        if synchronized:
+            save_level = self.logger.level
+            start_time = time.time()
+            rc = self.api.rpc.transmit("ping", api_class=None)
+            start_at_ts = rc.data()['ts'] + max((time.time() - start_time), 0.5) * len(ports)
+            self.logger.level = save_level
+        else:
+            start_at_ts = 0
+
+        for port in ports:
+            port.start_at_ts = start_at_ts
+            port.start_transmit(blocking=False)
+
+        if blocking:
+            self.wait_transmit(*ports)
+
+    def wait_transmit(self, *ports):
+        ports = ports if ports else ports.keys()
+        for port in ports:
+            port.wait_transmit()
+
+    def stop_transmit(self, *ports):
+        ports = ports if ports else self.ports
+        for port in ports:
+            port.stop_transmit()
+
     @property
     def ports(self):
         """
         :return: dictionary {index: object} of all ports.
         """
-        return {p: p for p in self.get_objects_by_type('port')}
+        return {int(p.ref): p for p in self.get_objects_by_type('port')}
 
     def _get_api_h(self):
         return self.api.get_api_h()

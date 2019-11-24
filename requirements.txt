@@ -1,4 +1,7 @@
-#pytest==5.2.2
+pyyaml
+texttable
+
+pytest
 scapy==2.4.3
 pyzmq==18.1.1
 pytrafficgen==1.5.5
