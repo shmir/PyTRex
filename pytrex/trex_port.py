@@ -110,6 +110,7 @@ class TrexPort(TrexObject):
         self.duration = -1
         self.force = False
         self.mask = MASK_ALL
+        self.start_at_ts = 0.0
         self.statistics = None
         self.xstatistics = None
 

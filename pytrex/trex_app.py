@@ -101,10 +101,11 @@ class TrexServer(TrexObject):
         :param reset: True - reset port, False - leave port configuration
         :return: ports dictionary (index: object)
         """
-
+        return_dict = {}
         for location in locations:
             TrexPort(parent=self, index=location).reserve(force)
-        return self.ports
+            return_dict[location] = self.ports[location]
+        return return_dict
 
     def get_system_info(self):
         return self.api.rpc.transmit('get_system_info', {}).rc_list[0].data
