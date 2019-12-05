@@ -71,7 +71,7 @@ class TrexServer(TrexObject):
         self.async_port = async_port
         self.virtual = virtual
 
-        super(self.__class__, self).__init__(objType='server', index='', parent=None, objRef=None)
+        super(self.__class__, self).__init__(objType='server', parent=None, objRef='server')
 
     def connect(self):
         """ Connect to the TRex server. """
@@ -168,7 +168,7 @@ class TrexServer(TrexObject):
         """
         :return: dictionary {index: object} of all ports.
         """
-        return {int(p.ref): p for p in self.get_objects_by_type('port')}
+        return {p.id: p for p in self.get_objects_by_type('port')}
 
     def _get_api_h(self):
         return self.api.get_api_h()

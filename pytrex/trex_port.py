@@ -104,7 +104,7 @@ class TrexPort(TrexObject):
         :param parent: parent chassis.
         :param index: port index, zero based
         """
-        super().__init__(objType='port', objRef=index, parent=parent)
+        super().__init__(objType='port', parent=parent, index=index)
         self.mul = decode_multiplier('1', allow_update=False, divide_count=1)
         self.duration = -1
         self.force = False
@@ -121,7 +121,7 @@ class TrexPort(TrexObject):
         :param force: True - take forcefully, False - fail if port is reserved by other user
         """
 
-        params = {"port_id": int(self.ref),
+        params = {"port_id": int(self.index),
                   "user": self.username,
                   "session_id": self.session_id,
                   "force": force}
@@ -171,7 +171,7 @@ class TrexPort(TrexObject):
             stream_json['next_stream_id'] = next_id
 
             params = {"handler": self.handler,
-                      "port_id": int(self.ref),
+                      "port_id": int(self.id),
                       "stream_id": stream_id,
                       "stream": stream_json}
 
@@ -249,7 +249,7 @@ class TrexPort(TrexObject):
         :param command: RPC command
         :param params: command parameters
         """
-        params['port_id'] = int(self.ref)
+        params['port_id'] = int(self.id)
         params['handler'] = self.handler
         return self.api.rpc.transmit(command, params)
 

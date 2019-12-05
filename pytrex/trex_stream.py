@@ -279,7 +279,7 @@ class TrexStream(TrexObject):
         :param index: stream index under port, zero based
         :param name: stream name
         """
-        super().__init__(objType='stream', objRef=f'{parent.ref}/{index}', parent=parent, name=name)
+        super().__init__(objType='stream', parent=parent, index=index, name=name)
 
     def config(self,
                packet=None,
@@ -355,7 +355,7 @@ class TrexStream(TrexObject):
         # save for easy construct code from stream object
         self.mac_src_override_by_pkt = mac_src_override_by_pkt
         self.mac_dst_override_mode = mac_dst_override_mode
-        self.id = stream_id
+        # self.id = stream_id
 
         self.fields = {}
 

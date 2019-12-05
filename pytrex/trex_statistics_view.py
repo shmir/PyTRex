@@ -12,9 +12,9 @@ class TrexStatistics:
 class TextPortStatistics(TrexStatistics):
 
     def read(self):
-        self.statistics = {}
-        for index, port in self.server.ports.items():
-            self.statistics[index] = port.read_stats()
+        self.statistics = TgnObjectsDict()
+        for port in self.server.ports.values():
+            self.statistics[port] = port.read_stats()
         return self.statistics
 
 
@@ -33,3 +33,14 @@ class TrexStreamStatistics(TrexStatistics):
     def read(self):
         rc = self.server.api.rpc.transmit('get_pgid_stats', params={'pgids': self.ids})
         pgid_stats = rc.data()['flow_stats']
+        self.statistics = TgnObjectsDict()
+        for pgid, stats in pgid_stats.items():
+            stream = self.stream_id_to_stream[int(pgid)]
+            self.statistics[stream] = {'tx': {}, 'rx': {}}
+            tx_port = stream.parent
+            for name, values in stats.items():
+                if name.startswith('t'):
+                    self.statistics[stream]['tx'][name] = values[str(tx_port.id)]
+                else:
+                    pass
+        return self.statistics

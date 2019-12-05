@@ -102,7 +102,7 @@ class TestOffline:
 
         port_stats_view = TextPortStatistics(trex.server)
         port_stats_view.read()
-        print(json.dumps(port_stats_view.statistics, indent=2))
+        print(port_stats_view.statistics.dumps(indent=2))
 
     def test_streams(self, trex, ports):
         trex_ports = trex.server.reserve_ports(ports, force=True)
@@ -117,6 +117,9 @@ class TestOffline:
 
         stream_stats_view = TrexStreamStatistics(trex.server)
         stream_stats_view.read()
+        print(stream_stats_view.statistics.dumps(indent=2))
 
         trex.server.clear_stats()
         trex.server.start_transmit(True)
+        stream_stats_view.read()
+        print(stream_stats_view.statistics.dumps(indent=2))
