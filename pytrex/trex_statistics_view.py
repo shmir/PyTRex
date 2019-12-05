@@ -1,18 +1,18 @@
 
-from trafficgenerator.tgn_object import TgnObjectsDict
+from trafficgenerator.tgn_object import TgnSubStatsDict
 
 
 class TrexStatistics:
 
     def __init__(self, server):
         self.server = server
-        self.statistics = TgnObjectsDict()
+        self.statistics = TgnSubStatsDict()
 
 
-class TextPortStatistics(TrexStatistics):
+class TrexPortStatistics(TrexStatistics):
 
     def read(self):
-        self.statistics = TgnObjectsDict()
+        self.statistics = TgnSubStatsDict()
         for port in self.server.ports.values():
             self.statistics[port] = port.read_stats()
         return self.statistics
@@ -30,17 +30,33 @@ class TrexStreamStatistics(TrexStatistics):
                 stream_id = stream.fields['flow_stats']['stream_id']
                 self.stream_id_to_stream[stream_id] = stream
 
+    @classmethod
+    def clear_stats(cls, server):
+        rc = server.api.rpc.transmit('get_active_pgids')
+        ids = rc.data()['ids']['flow_stats']
+        cls.base_pgid_stats = server.api.rpc.transmit('get_pgid_stats', params={'pgids': ids}).data()['flow_stats']
+
     def read(self):
         rc = self.server.api.rpc.transmit('get_pgid_stats', params={'pgids': self.ids})
         pgid_stats = rc.data()['flow_stats']
-        self.statistics = TgnObjectsDict()
+        self.statistics = TgnSubStatsDict()
         for pgid, stats in pgid_stats.items():
             stream = self.stream_id_to_stream[int(pgid)]
             self.statistics[stream] = {'tx': {}, 'rx': {}}
             tx_port = stream.parent
             for name, values in stats.items():
                 if name.startswith('t'):
-                    self.statistics[stream]['tx'][name] = values[str(tx_port.id)]
+                    value = values[str(tx_port.id)]
+                    if not name.endswith('s') and hasattr(self, 'base_pgid_stats'):
+                        value -= self.base_pgid_stats[pgid][name][str(tx_port.id)]
+                    self.statistics[stream]['tx'][name] = value
                 else:
-                    pass
+                    for rx_port, value in values.items():
+                        if not name.endswith('s') and hasattr(self, 'base_pgid_stats'):
+                            value -= self.base_pgid_stats[pgid][name][str(tx_port.id)]
+                        if value:
+                            rx_port = self.server.ports[int(rx_port)]
+                            if rx_port not in self.statistics[stream]['rx']:
+                                self.statistics[stream]['rx'][rx_port] = {}
+                            self.statistics[stream]['rx'][rx_port][name] = value
         return self.statistics

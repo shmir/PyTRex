@@ -6,7 +6,7 @@ import json
 
 from pytrex.trex_app import TrexApp
 from pytrex.trex_port import PortState
-from pytrex.trex_statistics_view import TextPortStatistics, TrexStreamStatistics
+from pytrex.trex_statistics_view import TrexPortStatistics, TrexStreamStatistics
 
 
 @pytest.fixture(scope='module')
@@ -100,7 +100,7 @@ class TestOffline:
         assert port_0_stats['ipackets'] == 300
         assert port_1_stats['ipackets'] == 300
 
-        port_stats_view = TextPortStatistics(trex.server)
+        port_stats_view = TrexPortStatistics(trex.server)
         port_stats_view.read()
         print(port_stats_view.statistics.dumps(indent=2))
 
@@ -114,12 +114,23 @@ class TestOffline:
         port_1.remove_all_streams()
         port_1.load_streams('profiles/test_profile_2.yaml')
         port_1.write_streams()
+        stream_0 = list(trex.server.ports[0].streams.values())[0]
 
         stream_stats_view = TrexStreamStatistics(trex.server)
         stream_stats_view.read()
         print(stream_stats_view.statistics.dumps(indent=2))
+        assert stream_stats_view.statistics[stream_0]['tx']['tb'] == 0
+        assert not stream_stats_view.statistics[stream_0]['rx']
 
         trex.server.clear_stats()
         trex.server.start_transmit(True)
         stream_stats_view.read()
         print(stream_stats_view.statistics.dumps(indent=2))
+        assert stream_stats_view.statistics[stream_0]['tx']['tp'] == 100
+        assert stream_stats_view.statistics[stream_0]['rx'][port_1]['rp'] == 100
+
+        trex.server.clear_stats()
+        trex.server.start_transmit(True)
+        stream_stats_view.read()
+        assert stream_stats_view.statistics[stream_0]['tx']['tp'] == 100
+        assert stream_stats_view.statistics[stream_0]['rx'][port_1]['rp'] == 100

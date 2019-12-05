@@ -14,6 +14,7 @@ from .trex_object import TrexObject
 from .trex_port import TrexPort
 from .api.trex_stl_conn import Connection
 from .api.trex_event import EventsHandler
+from .trex_statistics_view import TrexStreamStatistics
 
 
 def run_trex(ip, user, password, path):
@@ -70,6 +71,7 @@ class TrexServer(TrexObject):
         self.port = port
         self.async_port = async_port
         self.virtual = virtual
+        self.server = self
 
         super(self.__class__, self).__init__(objType='server', parent=None, objRef='server')
 
@@ -117,6 +119,7 @@ class TrexServer(TrexObject):
         ports = ports if ports else list(self.ports.values())
         for port in ports:
             port.clear_stats()
+        TrexStreamStatistics.clear_stats(self)
 
     def start_transmit(self, blocking=False, *ports):
         """ Start traffic on list of ports.
@@ -157,6 +160,7 @@ class TrexServer(TrexObject):
         ports = ports if ports else ports.keys()
         for port in ports:
             port.wait_transmit()
+        time.sleep(4)
 
     def stop_transmit(self, *ports):
         ports = ports if ports else self.ports

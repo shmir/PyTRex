@@ -15,6 +15,7 @@ class TrexObject(TgnObject):
         if data['parent']:
             self.username = data['parent'].username
             self.session_id = data['parent'].session_id
+            self.server = data['parent'].server
             if data['parent']._data.get('index'):
                 data['objRef'] = f'{data["objType"]}/{data["parent"].index}/{data["index"]}'
             else:

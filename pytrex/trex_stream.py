@@ -10,6 +10,7 @@ from scapy.layers.l2 import Dot3, Ether
 from .trex_stl_packet_builder_scapy import STLPktBuilder
 from .text_opts import format_num
 from .trex_object import TrexObject
+from .trex_statistics_view import TrexStreamStatistics
 
 
 # base class for TX mode
@@ -280,6 +281,10 @@ class TrexStream(TrexObject):
         :param name: stream name
         """
         super().__init__(objType='stream', parent=parent, index=index, name=name)
+
+    def read_stats(self):
+        stream_stats_view = TrexStreamStatistics(self.server)
+        return stream_stats_view.read()[self]
 
     def config(self,
                packet=None,

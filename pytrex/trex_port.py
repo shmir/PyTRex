@@ -229,7 +229,9 @@ class TrexPort(TrexObject):
     def read_stats(self):
         self.statistics = self.transmit('get_port_stats').data()
         for stat, value in self.statistics.items():
-            self.statistics[stat] = value - self.base_stats[stat]
+            if not stat.endswith('ps'):
+                value -= self.base_stats[stat]
+            self.statistics[stat] = value
         return self.statistics
 
     def read_xstats(self):
