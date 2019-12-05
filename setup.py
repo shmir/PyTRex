@@ -7,7 +7,7 @@ install_requires = [r for r in required if r and r[0] != '#' and not r.startswit
 
 setup(
     name='pytrex',
-    version='0.6',
+    version='0.6.1',
     description='Trex Stateless library',
 
     url='https://github.com/shmir/trex_stl_lib',
