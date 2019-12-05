@@ -1,4 +1,5 @@
 
+import os
 import sys
 import pytest
 import logging
@@ -51,7 +52,7 @@ class TestOffline:
         trex_port = list(trex.server.reserve_ports(ports, force=True).values())[0]
         trex_port.remove_all_streams()
         assert trex_port.get_port_state() == PortState.Idle
-        trex_port.load_streams('profiles/test_profile_1.yaml')
+        trex_port.load_streams(os.path.dirname(__file__) + '/profiles/test_profile_1.yaml')
         trex_port.write_streams()
         assert trex_port.get_port_state() == PortState.Streams
 
@@ -60,7 +61,7 @@ class TestOffline:
         tx_port = list(trex_ports.values())[0]
         rx_port = list(trex_ports.values())[1]
         tx_port.remove_all_streams()
-        tx_port.load_streams('profiles/test_profile_1.yaml')
+        tx_port.load_streams(os.path.dirname(__file__) + '/profiles/test_profile_1.yaml')
         tx_port.write_streams()
 
         tx_port.clear_stats()
@@ -85,10 +86,10 @@ class TestOffline:
         port_0 = list(trex_ports.values())[0]
         port_1 = list(trex_ports.values())[1]
         port_0.remove_all_streams()
-        port_0.load_streams('profiles/test_profile_1.yaml')
+        port_0.load_streams(os.path.dirname(__file__) + '/profiles/test_profile_1.yaml')
         port_0.write_streams()
         port_1.remove_all_streams()
-        port_1.load_streams('profiles/test_profile_2.yaml')
+        port_1.load_streams(os.path.dirname(__file__) + '/profiles/test_profile_2.yaml')
         port_1.write_streams()
 
         trex.server.clear_stats()
@@ -109,10 +110,10 @@ class TestOffline:
         port_0 = list(trex_ports.values())[0]
         port_1 = list(trex_ports.values())[1]
         port_0.remove_all_streams()
-        port_0.load_streams('profiles/test_profile_1.yaml')
+        port_0.load_streams(os.path.dirname(__file__) + '/profiles/test_profile_1.yaml')
         port_0.write_streams()
         port_1.remove_all_streams()
-        port_1.load_streams('profiles/test_profile_2.yaml')
+        port_1.load_streams(os.path.dirname(__file__) + '/profiles/test_profile_2.yaml')
         port_1.write_streams()
         stream_0 = list(trex.server.ports[0].streams.values())[0]
 
