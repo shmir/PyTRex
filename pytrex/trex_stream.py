@@ -3,9 +3,10 @@ import os
 import base64
 import json
 import yaml
+from enum import Enum
 
 from scapy.layers.inet import IP
-from scapy.layers.l2 import Dot3, Ether
+from scapy.layers.l2 import Ether
 
 from .trex_stl_packet_builder_scapy import STLPktBuilder
 from .text_opts import format_num
@@ -13,192 +14,17 @@ from .trex_object import TrexObject
 from .trex_statistics_view import TrexStreamStatistics
 
 
-# base class for TX mode
-class STLTXMode:
-    """ mode rate speed """
-
-    def __init__(self, pps=None, bps_L1=None, bps_L2=None, percentage=None):
-        """
-        Speed can be given in packets per second(pps), L2/L1 bps, or port percent
-        Use only one unit.
-        you can enter pps =10000 oe bps_L1=10
-
-        :parameters:
-            pps : float
-               Packets per second
-
-            bps_L1 : float
-               Bits per second L1(with IPG)
-
-            bps_L2 : float
-               Bits per second L2(Ethernet-FCS)
-
-            percentage : float
-               Link interface percent(0-100). Example: 10 is 10% of the port link setup
-
-        .. code-block:: python
-
-            # STLTXMode Example
-
-            mode = STLTXCont(pps = 10)
-
-            mode = STLTXCont(bps_L1 = 10000000) #10mbps L1
-
-            mode = STLTXCont(bps_L2 = 10000000) #10mbps L2
-
-            mode = STLTXCont(percentage = 10)   #10%
-
-        """
-
-        args = [pps, bps_L1, bps_L2, percentage]
-
-        # default
-        if all([x is None for x in args]):
-            pps = 1.0
-        else:
-            if len([x for x in args if x is not None]) > 1:
-                raise Exception(f'exactly one parameter from {args} should be provided')
-
-        self.fields = {'rate': {}}
-
-        if pps is not None:
-            self.fields['rate']['type'] = 'pps'
-            self.fields['rate']['value'] = pps
-
-        elif bps_L1 is not None:
-            self.fields['rate']['type'] = 'bps_L1'
-            self.fields['rate']['value'] = bps_L1
-
-        elif bps_L2 is not None:
-            self.fields['rate']['type'] = 'bps_L2'
-            self.fields['rate']['value'] = bps_L2
-
-        elif percentage is not None:
-            if not(percentage > 0 and percentage <= 100):
-                raise Exception('percentage', percentage)
-
-            self.fields['rate']['type'] = 'percentage'
-            self.fields['rate']['value'] = percentage
-
-    def to_json(self):
-        return self.fields
-
-
-# continuous mode
-class STLTXCont(STLTXMode):
-    """ Continuous mode """
-
-    def __init__(self, **kwargs):
-        """
-        Continuous mode
-
-         see :class:`trex_stl_lib.trex_stl_streams.STLTXMode` for rate
-
-        .. code-block:: python
-
-            # STLTXCont Example
-
-            mode = STLTXCont(pps = 10)
-
-        """
-        super(STLTXCont, self).__init__(**kwargs)
-
-        self.fields['type'] = 'continuous'
-
-    @staticmethod
-    def __str__():
-        return "Continuous"
-
-# single burst mode
-
-
-class STLTXSingleBurst(STLTXMode):
-    """ Single burst mode """
-
-    def __init__(self, total_pkts=1, **kwargs):
-        """
-        Single burst mode
-
-            :parameters:
-                 total_pkts : int
-                    Number of packets for this burst
-
-         see :class:`trex_stl_lib.trex_stl_streams.STLTXMode` for rate
-
-        .. code-block:: python
-
-            # STLTXSingleBurst Example
-
-            mode = STLTXSingleBurst( pps = 10, total_pkts = 1)
-
-        """
-
-        if not isinstance(total_pkts, int):
-            raise Exception('total_pkts', total_pkts)
-
-        super(STLTXSingleBurst, self).__init__(**kwargs)
-
-        self.fields['type'] = 'single_burst'
-        self.fields['total_pkts'] = total_pkts
-
-    @staticmethod
-    def __str__():
-        return "Single Burst"
-
-# multi burst mode
-
-
-class STLTXMultiBurst(STLTXMode):
-    """ Multi-burst mode """
-
-    def __init__(self,
-                 pkts_per_burst=1,
-                 ibg=0.0,   # usec not SEC
-                 count=1,
-                 **kwargs):
-        """
-        Multi-burst mode
-
-        :parameters:
-
-             pkts_per_burst: int
-                Number of packets per burst
-
-              ibg : float
-                Inter-burst gap in usec 1,000,000.0 is 1 sec
-
-              count : int
-                Number of bursts
-
-         see :class:`trex_stl_lib.trex_stl_streams.STLTXMode` for rate
-
-        .. code-block:: python
-
-            # STLTXMultiBurst Example
-
-            mode = STLTXMultiBurst(pps = 10, pkts_per_burst = 1,count 10, ibg=10.0)
-
-        """
-
-        if not isinstance(pkts_per_burst, int):
-            raise Exception('pkts_per_burst', pkts_per_burst)
-
-        if not isinstance(ibg, (int, float)):
-            raise Exception('ibg', ibg)
-
-        if not isinstance(count, int):
-            raise Exception('count', count)
-
-        super(STLTXMultiBurst, self).__init__(**kwargs)
-
-        self.fields['type'] = 'multi_burst'
-        self.fields['pkts_per_burst'] = pkts_per_burst
-        self.fields['ibg'] = ibg
-        self.fields['count'] = count
-
-    @staticmethod
-    def __str__():
-        return "Multi Burst"
+class TrexRateType(Enum):
+    pps = 0,
+    bps_l1 = 1
+    bps_l2 = 2
+    percentage = 3
+
+
+class TrexTxType(Enum):
+    continuous = 0,
+    single_burst = 1
+    multi_burst = 2
 
 
 STLStreamDstMAC_CFG_FILE = 0
@@ -281,20 +107,34 @@ class TrexStream(TrexObject):
         :param name: stream name
         """
         super().__init__(objType='stream', parent=parent, index=index, name=name)
+        self.fields = {}
+        self.fields['mode'] = {}
 
     def read_stats(self):
         stream_stats_view = TrexStreamStatistics(self.server)
         return stream_stats_view.read()[self]
 
+    def set_rate(self, type=TrexRateType.pps, value=1):
+        self.fields['mode']['rate'] = {}
+        self.fields['mode']['rate']['type'] = type.name
+        self.fields['mode']['rate']['value'] = value
+
+    def set_tx_type(self, type=TrexTxType.continuous, packets=None, ibg=None, count=None):
+        self.fields['mode']['type'] = type.name
+        if type == TrexTxType.single_burst:
+            self.fields['mode']['total_pkts'] = packets
+        elif type == TrexTxType.multi_burst:
+            self.fields['mode']['pkts_per_burst'] = packets
+            self.fields['mode']['ibg'] = ibg
+            self.fields['mode']['count'] = count
+
     def config(self,
                packet=None,
-               mode=STLTXCont(pps=1),
                enabled=True,
                self_start=True,
                isg=0.0,
                flow_stats=None,
                next=None,
-               stream_id=None,
                action_count=0,
                random_seed=0,
                mac_src_override_by_pkt=None,
@@ -309,10 +149,6 @@ class TrexStream(TrexObject):
                   `trex_stl_lib.trex_stl_packet_builder_scapy.STLPktBuilder`
                        Template packet and field engine program. Example:
                        packet = STLPktBuilder(pkt = base_pkt/pad)
-
-                  mode :  :class:`trex_stl_lib.trex_stl_streams.STLTXCont` or :
-                  class:`trex_stl_lib.trex_stl_streams.STLTXSingleBurst`  or  :
-                      class:`trex_stl_lib.trex_stl_streams.STLTXMultiBurst`
 
                   enabled : bool
                       Indicates whether the stream is enabled.
@@ -329,9 +165,6 @@ class TrexStream(TrexObject):
 
                   next : string
                       Name of the stream to activate.
-
-                  stream_id :
-                        For use by HLTAPI.
 
                   action_count : uint16_t
                         If there is a next stream, number of loops before stopping.
@@ -351,9 +184,6 @@ class TrexStream(TrexObject):
                         For delay purposes, will not be sent.
         """
 
-        if(type(mode) == STLTXCont) and(next is not None):
-            raise Exception("Continuous stream cannot have a next stream ID")
-
         # tag for the stream and next - can be anything
         self.next = next
 
@@ -361,8 +191,6 @@ class TrexStream(TrexObject):
         self.mac_src_override_by_pkt = mac_src_override_by_pkt
         self.mac_dst_override_mode = mac_dst_override_mode
         # self.id = stream_id
-
-        self.fields = {}
 
         int_mac_src_override_by_pkt = 0
         int_mac_dst_override_mode = 0
@@ -399,10 +227,6 @@ class TrexStream(TrexObject):
 
         if random_seed != 0:
             self.fields['random_seed'] = random_seed  # optional
-
-        # mode
-        self.fields['mode'] = mode.to_json()
-        self.mode_desc = str(mode)
 
         # packet
         self.fields['packet'] = {}
@@ -530,38 +354,21 @@ class TrexYamlLoader:
 
         return builder
 
-    def __parse_mode(self, mode_obj):
-        if not mode_obj:
-            return None
+    def __parse_mode(self, stream, mode_obj):
 
-        rate_type = mode_obj.get('rate').get('type')
-        rate_value = mode_obj.get('rate').get('value')
-        if rate_type not in ['pps', 'bps_L1', 'bps_L2', 'percentage']:
-            raise Exception("'rate' must contain exactly one from 'pps', 'bps_L1', 'bps_L2', 'percentage'")
+        rate_type = TrexRateType[mode_obj.get('rate').get('type', 'continuous')]
+        rate_value = mode_obj.get('rate').get('value', 1.0)
+        stream.set_rate(rate_type, rate_value)
 
-        rate = {rate_type: rate_value}
-
-        mode_type = mode_obj.get('type')
-
-        if mode_type == 'continuous':
-            mode = STLTXCont(**rate)
-
-        elif mode_type == 'single_burst':
-            defaults = STLTXSingleBurst()
-            mode = STLTXSingleBurst(total_pkts=mode_obj.get('total_pkts', defaults.fields['total_pkts']), **rate)
-
-        elif mode_type == 'multi_burst':
-            defaults = STLTXMultiBurst()
-            mode = STLTXMultiBurst(pkts_per_burst=mode_obj.get('pkts_per_burst', defaults.fields['pkts_per_burst']),
-                                   ibg=mode_obj.get('ibg', defaults.fields['ibg']),
-                                   count=mode_obj.get('count', defaults.fields['count']),
-                                   **rate)
-
-        else:
-            raise Exception(
-                "mode type can be 'continuous', 'single_burst' or 'multi_burst")
-
-        return mode
+        tx_type = TrexTxType[mode_obj.get('type', 'continuous')]
+        attributes = {}
+        if tx_type == TrexTxType.single_burst:
+            attributes['packets'] = mode_obj.get('total_pkts', 1)
+        elif tx_type == TrexTxType.multi_burst:
+            attributes['packets'] = mode_obj.get('pkts_per_burst', 1)
+            attributes['ibg'] = mode_obj.get('ibg', 0.0)
+            attributes['count'] = mode_obj.get('count', 2)
+        stream.set_tx_type(tx_type, **attributes)
 
     def __parse_flow_stats(self, flow_stats_obj):
 
@@ -577,23 +384,20 @@ class TrexYamlLoader:
         return STLFlowStats(pg_id=pg_id)
 
     def __parse_stream(self, yaml_object):
+
+        # create the stream
         s_obj = yaml_object['stream']
+        stream = self.port.add_stream(name=yaml_object.get('name'))
 
         # parse packet
         packet = s_obj['packet']
 
         builder = self.__parse_packet(packet)
 
-        # mode
-        mode = self.__parse_mode(s_obj.get('mode'))
-
         # rx stats
         flow_stats = self.__parse_flow_stats(s_obj.get('flow_stats'))
 
-        # create the stream
-        stream = self.port.add_stream(name=yaml_object.get('name'))
         stream.config(packet=builder,
-                      mode=mode,
                       flow_stats=flow_stats,
                       enabled=s_obj.get('enabled', True),
                       self_start=s_obj.get('self_start', True),
@@ -602,6 +406,9 @@ class TrexYamlLoader:
                       action_count=s_obj.get('action_count', 0),
                       mac_src_override_by_pkt=s_obj.get('mac_src_override_by_pkt', 0),
                       mac_dst_override_mode=s_obj.get('mac_src_override_by_pkt', 0))
+
+        # mode
+        self.__parse_mode(stream, s_obj.get('mode'))
 
         # hack the VM fields for now
         if 'vm' in s_obj:
