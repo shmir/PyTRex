@@ -5,9 +5,14 @@ import pytest
 import logging
 import json
 
+from scapy.layers.l2 import Ether
+from scapy.layers.inet import IP
+
 from pytrex.trex_app import TrexApp
 from pytrex.trex_port import PortState
+from pytrex.trex_stream import TrexRateType, TrexTxType
 from pytrex.trex_statistics_view import TrexPortStatistics, TrexStreamStatistics
+from pytrex.trex_stl_packet_builder_scapy import STLPktBuilder
 
 
 @pytest.fixture(scope='module')
@@ -135,3 +140,22 @@ class TestOffline:
         stream_stats_view.read()
         assert stream_stats_view.statistics[stream_0]['tx']['tp'] == 100
         assert stream_stats_view.statistics[stream_0]['rx'][port_1]['rp'] == 100
+
+    def test_packets(self, trex, ports):
+        trex_ports = trex.server.reserve_ports(ports[0:1], force=True)
+        tx_port = list(trex_ports.values())[0]
+        tx_port.remove_all_streams()
+        stream_0 = tx_port.add_stream('s1')
+        stream_1 = tx_port.add_stream('s2')
+
+        stream_0.set_rate(TrexRateType.pps, 100)
+        stream_0.set_tx_type(TrexTxType.single_burst, packets=10)
+        stream_0.set_next('s2')
+        stream_0.set_packet(STLPktBuilder(pkt=Ether()/IP(src='10.10.10.10')))
+
+        stream_1.set_rate(TrexRateType.pps, 100)
+        stream_1.set_tx_type(TrexTxType.multi_burst, packets=2, ibg=0.0, count=1)
+        stream_1.set_packet(STLPktBuilder(pkt=Ether()/IP(src='20.20.20.20')))
+
+        tx_port.write_streams()
+        trex.server.start_transmit(True, tx_port)

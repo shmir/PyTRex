@@ -7,13 +7,12 @@ import os
 import random
 import socket
 import struct
-
 import yaml
-from scapy.all import Ether, RawPcapReader, mac2str, Route
-from scapy.packet import NoPayload, Packet
-from scapy.utils import hexdump, wrpcap  # , packet
 
-from .trex_stl_packet_builder_interface import CTrexPktBuilderInterface
+from scapy.layers.l2 import Ether
+from scapy.all import RawPcapReader, mac2str
+from scapy.packet import NoPayload, Packet
+from scapy.utils import hexdump, wrpcap
 
 
 class CTRexPacketBuildException(Exception):
@@ -515,7 +514,7 @@ class CTRexScapyPktUtl(object):
         """
         save_cnt = cnt
         for pkt in self.pkt_iter():
-            if name in(pkt.name, pkt.__class__.__name__):
+            if name in (pkt.name, pkt.__class__.__name__):
                 if cnt == 0:
                     return(pkt, pkt._offset)
                 else:
@@ -1380,7 +1379,7 @@ class STLVmTupleGen(CTRexVmDescBase):
 
 # ###############################################################################################
 
-class STLPktBuilder(CTrexPktBuilderInterface):
+class STLPktBuilder:
     # WTF
     def __init__(self, pkt=None, pkt_buffer=None, vm=None, path_relative_to_profile=False,
                  build_raw=False, remove_fcs=True):
@@ -1491,7 +1490,7 @@ class STLPktBuilder(CTrexPktBuilderInterface):
             self.__lazy_build_packet()
 
         # if we have packet and VM - compile now
-        if(self.pkt or self.pkt_raw) and(self.vm_scripts):
+        if self.pkt or self.pkt_raw and self.vm_scripts:
             self.compile()
 
     def dump_vm_data_as_yaml(self):

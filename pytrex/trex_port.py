@@ -7,6 +7,7 @@ Classes and utilities that represents TRex port.
 import re
 import time
 from enum import Enum
+from copy import deepcopy
 
 from .trex_object import TrexObject
 from .trex_stream import TrexStream, TrexYamlLoader
@@ -162,19 +163,18 @@ class TrexPort(TrexObject):
 
     def write_streams(self):
         """ Write all streams to server. """
+
         batch = []
         for name, stream in self.streams.items():
+            stream_fields = deepcopy(stream.fields)
             stream_id = list(self.streams.keys()).index(name) + 1
-            next_id = list(self.streams.keys()).index(stream.next) + 1 if stream.next else -1
-
-            stream_json = stream.to_json()
-            stream_json['next_stream_id'] = next_id
+            next_stream = stream_fields.pop('next_stream')
+            stream_fields['next_stream_id'] = list(self.streams.keys()).index(next_stream) + 1 if next_stream else -1
 
             params = {"handler": self.handler,
                       "port_id": int(self.id),
                       "stream_id": stream_id,
-                      "stream": stream_json}
-
+                      "stream": stream_fields}
             cmd = RpcCmdData('add_stream', params, 'core')
             batch.append(cmd)
 
