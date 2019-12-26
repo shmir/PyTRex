@@ -146,9 +146,8 @@ class TestOffline:
         port_0.write_streams()
 
     def test_packets(self, trex, ports):
-        trex_ports = trex.server.reserve_ports(ports[0:1], force=True)
+        trex_ports = trex.server.reserve_ports(ports[0:1], force=True, reset=True)
         tx_port = list(trex_ports.values())[0]
-        tx_port.remove_all_streams()
         stream_0 = tx_port.add_stream('s1')
         stream_1 = tx_port.add_stream('s2')
 
@@ -162,5 +161,5 @@ class TestOffline:
         stream_1.set_packet(STLPktBuilder(pkt=Ether()/IP(src='20.20.20.20')))
 
         tx_port.write_streams()
-        # trex.server.start_capture()
+        trex.server.start_capture()
         # trex.server.start_transmit(True, tx_port)

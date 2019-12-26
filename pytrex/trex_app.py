@@ -14,7 +14,7 @@ from typing import Dict, List, Optional
 from trafficgenerator.tgn_app import TgnApp
 from trafficgenerator.tgn_utils import ApiType
 from .trex_object import TrexObject
-from .trex_port import TrexPort
+from .trex_port import TrexPort, TrexCaptureMode
 from .api.trex_stl_conn import Connection
 from .api.trex_event import EventsHandler
 from .trex_statistics_view import TrexStreamStatistics
@@ -122,10 +122,10 @@ class TrexServer(TrexObject):
     #
 
     def get_system_info(self) -> Dict[str, str]:
-        return self.api.rpc.transmit('get_system_info', {}).rc_list[0].data
+        return self.transmit('get_system_info', {}).rc_list[0].data
 
     def get_supported_cmds(self) -> Dict[str, str]:
-        return self.api.rpc.transmit('get_supported_cmds', {}).rc_list[0].data
+        return self.transmit('get_supported_cmds', {}).rc_list[0].data
 
     #
     # Control
@@ -195,14 +195,18 @@ class TrexServer(TrexObject):
         for port in ports:
             port.stop_transmit()
 
-    def start_capture(self, *ports: Optional[List[TrexPort]]) -> None:
-        """ Start capture on list of ports.
+    def start_capture(self, limit: Optional[int] = 1000, mode: Optional[TrexCaptureMode] = TrexCaptureMode.fixed,
+                      bpf_filter: Optional[str] = '', *ports: Optional[List[TrexPort]]) -> None:
+        """ Start RX capture on list of ports.
 
-        :param ports: list of ports to start capture on, if empty, start on all ports.
+        :param limit: limit the total number of captrured packets (for all ports) memory requierment is O(9K * limit).
+        :param mode: when full, if fixed drop new packets, else (cyclic) drop old packets.
+        :param bpf_filter:  A Berkeley Packet Filter pattern. Only packets matching the filter will be captured.
+        :param ports: list of ports to stop transmit on, if empty, stop on all ports.
         """
         ports = ports if ports else list(self.ports.values())
         for port in ports:
-            port.start_capture()
+            port.start_capture(rx=True, tx=False, limit=int(limit / len(ports)), mode=mode, bpf_filter=bpf_filter)
 
     #
     # Properties
@@ -216,14 +220,18 @@ class TrexServer(TrexObject):
         return {p.id: p for p in self.get_objects_by_type('port')}
 
     #
+    # Low level.
+    #
+
+    def transmit(self, method_name, params=None, api_class='core'):
+        return self.api.rpc.transmit(method_name, params, api_class)
+
+    def transmit_batch(self, batch_list):
+        return self.api.rpc.transmit_batch(batch_list)
+
+    #
     # Private
     #
 
     def _get_api_h(self):
         return self.api.get_api_h()
-
-    def _transmit(self, method_name, params=None, api_class='core'):
-        return self.api.rpc.transmit(method_name, params, api_class)
-
-    def _transmit_batch(self, batch_list):
-        return self.api.rpc.transmit_batch(batch_list)

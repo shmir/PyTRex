@@ -347,7 +347,7 @@ class CTRexAsyncClient():
         while not self.async_barrier['ack']:
 
             # inject
-            rc = self.stateless_client._transmit(
+            rc = self.stateless_client.transmit(
                 "publish_now", params={'key': key, 'baseline': baseline})
             if not rc:
                 return rc

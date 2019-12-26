@@ -21,7 +21,7 @@ setup(
     install_requires=install_requires,
     classifiers=[
         'Programming Language :: Python',
-        'development status 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Natural Language :: English',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',

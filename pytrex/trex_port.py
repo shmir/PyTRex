@@ -18,6 +18,11 @@ from .api.trex_stl_types import RpcCmdData
 MASK_ALL = ((1 << 64) - 1)
 
 
+class TrexCaptureMode(Enum):
+    fixed = 0
+    cyclic = 1
+
+
 def decode_multiplier(val, allow_update=False, divide_count=1):
 
     factor_table = {None: 1, 'k': 1e3, 'm': 1e6, 'g': 1e9}
@@ -114,6 +119,7 @@ class TrexPort(TrexObject):
         self.start_at_ts = 0.0
         self.statistics = None
         self.xstatistics = None
+        self.capture_id = None
 
     def reserve(self, force: Optional[bool] = False, reset: Optional[bool] = False) -> None:
         """ Reserve port.
@@ -244,12 +250,44 @@ class TrexPort(TrexObject):
         while self.is_transmitting():
             time.sleep(1)
 
-    def start_capture(self):
-        self.set_service_mode(True)
-        raise NotImplementedError()
+    def start_capture(self, rx: Optional[bool] = True, tx: Optional[bool] = False,
+                      limit: Optional[int] = 1000, mode: Optional[TrexCaptureMode] = TrexCaptureMode.fixed,
+                      bpf_filter: Optional[str] = '') -> None:
+        """ Start capture on list of ports.
 
-    def stop_capture(self):
-        raise NotImplementedError()
+        :param rx: if rx, capture RX packets, else, do not capture
+        :param tx: if tx, capture TX packets, else, do not capture
+        :param limit: limit the total number of captrured packets (RX and TX) memory requierment is O(9K * limit).
+        :param mode: when full, if fixed drop new packets, else (cyclic) drop old packets.
+        :param bpf_filter:  A Berkeley Packet Filter pattern. Only packets matching the filter will be captured.
+        """
+
+        self.set_service_mode(enabled=True)
+        params = {'command': 'start',
+                  'limit': limit,
+                  'mode': mode.name,
+                  'rx': [self.id] if rx else [],
+                  'tx': [self.id] if tx else [],
+                  'filter': bpf_filter}
+        rc = self.parent.transmit("capture", params=params)
+        self.capture_id = rc.data()['capture_id']
+
+    def stop_capture(self, output):
+
+        params = {'command': 'stop',
+                  'capture_id': self.capture_id}
+        rc = self.parent.transmit("capture", params=params)
+        pkt_count = rc.data()['pkt_count']
+        packets = self.fetch_capture_packets(output, pkt_count)
+
+        params = {'command': 'remove',
+                  'capture_id': self.capture_id}
+        self.parent.transmit("capture", params=params)
+
+        return packets
+
+    def fetch_capture_packets(self, output, pkt_count):
+        pass
 
     #
     # Statistics.
@@ -278,7 +316,7 @@ class TrexPort(TrexObject):
         return self.xstatistics
 
     #
-    # Private.
+    # Low level.
     #
 
     def transmit(self, command, params={}):
@@ -290,6 +328,10 @@ class TrexPort(TrexObject):
         params['port_id'] = int(self.id)
         params['handler'] = self.handler
         return self.api.rpc.transmit(command, params)
+
+    #
+    # Properties.
+    #
 
     @property
     def streams(self):
