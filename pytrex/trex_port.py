@@ -8,6 +8,7 @@ import re
 import time
 from enum import Enum
 from copy import deepcopy
+from typing import Optional
 
 from .trex_object import TrexObject
 from .trex_stream import TrexStream, TrexYamlLoader
@@ -114,12 +115,13 @@ class TrexPort(TrexObject):
         self.statistics = None
         self.xstatistics = None
 
-    def reserve(self, force=False):
+    def reserve(self, force: Optional[bool] = False, reset: Optional[bool] = False) -> None:
         """ Reserve port.
 
         TRex -> Port -> [Force] Acquire.
 
         :param force: True - take forcefully, False - fail if port is reserved by other user
+        :param reset: True - reset port, False - leave port configuration
         """
 
         params = {"port_id": int(self.index),
@@ -129,6 +131,9 @@ class TrexPort(TrexObject):
         rc = self.api.rpc.transmit("acquire", params)
         self.handler = rc.data()
 
+        if reset:
+            self.reset()
+
     def release(self):
         """ Release port.
 
@@ -136,17 +141,41 @@ class TrexPort(TrexObject):
         """
         self.transmit('release')
 
+    def reset(self) -> None:
+        self.remove_all_streams()
+
+    #
+    # Configuration.
+    #
+
+    def get_status(self):
+        params = {"port_id": int(self.index),
+                  "session_id": self.session_id}
+        rc = self.api.rpc.transmit("get_port_status", params)
+        return rc.data()
+
+    def set_service_mode(self, enabled):
+        params = {"port_id": int(self.index),
+                  "session_id": self.session_id,
+                  "enabled": enabled}
+        self.transmit("service", params)
+
     #
     # Streams.
     #
 
-    def remove_all_streams(self):
+    def remove_all_streams(self) -> None:
+        self.del_objects_by_type('stream')
         self.transmit('remove_all_streams')
 
-    def add_stream(self, name):
+    def add_stream(self, name: str) -> TrexStream:
+        """ Add stream with default configuration.
+
+        :param name: unique stream name
+        """
         return TrexStream(self, index=len(self.streams), name=name)
 
-    def load_streams(self, yaml_file):
+    def load_streams(self, yaml_file) -> None:
         """ Load streams from YAML file.
 
         :param yaml_file: full path to yaml profile file.
@@ -161,9 +190,10 @@ class TrexPort(TrexObject):
         """
         raise NotImplementedError()
 
-    def write_streams(self):
+    def write_streams(self) -> None:
         """ Write all streams to server. """
 
+        self.transmit('remove_all_streams')
         batch = []
         for name, stream in self.streams.items():
             stream_fields = deepcopy(stream.fields)
@@ -214,9 +244,15 @@ class TrexPort(TrexObject):
         while self.is_transmitting():
             time.sleep(1)
 
+    def start_capture(self):
+        self.set_service_mode(True)
+        raise NotImplementedError()
+
+    def stop_capture(self):
+        raise NotImplementedError()
+
     #
     # Statistics.
-    #
 
     def clear_stats(self):
         values = self.transmit('get_port_xstats_values').data()

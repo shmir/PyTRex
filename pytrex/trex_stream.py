@@ -113,6 +113,8 @@ class TrexStream(TrexObject):
     def set_packet(self, packet=None, mac_src_override_by_pkt=None, mac_dst_override_mode=None, dummy_stream=False):
         """ Set packet headers.
 
+        :todo: packet should be Scapy packet.
+
         :param packet: requested packet
         :type packet: STLPktBuilder
 

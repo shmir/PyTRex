@@ -141,6 +141,10 @@ class TestOffline:
         assert stream_stats_view.statistics[stream_0]['tx']['tp'] == 100
         assert stream_stats_view.statistics[stream_0]['rx'][port_1]['rp'] == 100
 
+        # Add stream and re-write.
+        port_0.add_stream('name_stream')
+        port_0.write_streams()
+
     def test_packets(self, trex, ports):
         trex_ports = trex.server.reserve_ports(ports[0:1], force=True)
         tx_port = list(trex_ports.values())[0]
@@ -158,4 +162,5 @@ class TestOffline:
         stream_1.set_packet(STLPktBuilder(pkt=Ether()/IP(src='20.20.20.20')))
 
         tx_port.write_streams()
-        trex.server.start_transmit(True, tx_port)
+        # trex.server.start_capture()
+        # trex.server.start_transmit(True, tx_port)

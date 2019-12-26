@@ -4,9 +4,12 @@ Classes and utilities that represents TRex GUI application.
 :author: yoram@ignissoft.com
 """
 
+from __future__ import annotations
 import random
 import getpass
 import time
+import logging
+from typing import Dict, List, Optional
 
 from trafficgenerator.tgn_app import TgnApp
 from trafficgenerator.tgn_utils import ApiType
@@ -24,7 +27,7 @@ def run_trex(ip, user, password, path):
 class TrexApp(TgnApp):
     """ TrexApp object, equivalent to TRex application. """
 
-    def __init__(self, logger, username=getpass.getuser()):
+    def __init__(self, logger: logging.Logger, username: Optional[str] = getpass.getuser()) -> None:
         """ Start TRex application.
 
         :param logger: python logger
@@ -34,7 +37,8 @@ class TrexApp(TgnApp):
         self.username = username
         self.server = None
 
-    def connect(self, ip, port=4501, async_port=4500, virtual=False):
+    def connect(self, ip: str, port: Optional[int] = 4501, async_port: Optional[int] = 4500,
+                virtual: Optional[bool] = False) -> TrexServer:
         """ Connect to TRex server.
 
         :param ip: TRex server IP
@@ -47,7 +51,8 @@ class TrexApp(TgnApp):
         self.server.connect()
         return self.server
 
-    def disconnect(self):
+    def disconnect(self) -> None:
+        """ Disconnect from TRex server. """
         if self.server:
             self.server.disconnect()
 
@@ -55,7 +60,8 @@ class TrexApp(TgnApp):
 class TrexServer(TrexObject):
     """ Represents single TRex server. """
 
-    def __init__(self, logger, username, ip, port=4501, async_port=4500, virtual=False):
+    def __init__(self, logger: logging.Logger, username: str, ip: str, port: Optional[int] = 4501,
+                 async_port: Optional[int] = 4500, virtual: Optional[bool] = False) -> None:
         """
         :param logger: python logger
         :param username: user name
@@ -75,7 +81,7 @@ class TrexServer(TrexObject):
 
         super(self.__class__, self).__init__(objType='server', parent=None, objRef='server')
 
-    def connect(self):
+    def connect(self) -> None:
         """ Connect to the TRex server. """
 
         self.event_handler = EventsHandler(self)
@@ -88,46 +94,60 @@ class TrexServer(TrexObject):
         self.api.connect()
         self.session_id = random.getrandbits(32)
 
-    def disconnect(self):
+    def disconnect(self) -> None:
+        """ Release all ports and disconnect from server. """
         for port in self.ports.values():
             port.release()
         self.api.disconnect()
 
-    def reserve_ports(self, locations, force=False, reset=True):
-        """ Reserve ports and reset factory defaults.
+    def reserve_ports(self, locations: List[str], force: Optional[bool] = False,
+                      reset: Optional[bool] = False) -> Dict[str, TrexPort]:
+        """ Reserve ports.
 
         TRex -> Port -> Acquire.
 
         :param locations: list of ports locations in the form <port number> to reserve
         :param force: True - take forcefully. False - fail if port is reserved by other user
         :param reset: True - reset port, False - leave port configuration
-        :return: ports dictionary (index: object)
+        :return: ports dictionary (location: object)
         """
         return_dict = {}
         for location in locations:
-            TrexPort(parent=self, index=location).reserve(force)
+            TrexPort(parent=self, index=location).reserve(force, reset)
             return_dict[location] = self.ports[location]
         return return_dict
 
-    def get_system_info(self):
+    #
+    # Configuration
+    #
+
+    def get_system_info(self) -> Dict[str, str]:
         return self.api.rpc.transmit('get_system_info', {}).rc_list[0].data
 
-    def get_supported_cmds(self):
+    def get_supported_cmds(self) -> Dict[str, str]:
         return self.api.rpc.transmit('get_supported_cmds', {}).rc_list[0].data
 
-    def clear_stats(self, *ports):
+    #
+    # Control
+    #
+
+    def clear_stats(self, *ports: Optional[List[TrexPort]]) -> None:
+        """ Clear statistics on list of ports.
+
+        :param ports: list of ports to start traffic on, if empty, clear all ports.
+        """
         ports = ports if ports else list(self.ports.values())
         for port in ports:
             port.clear_stats()
         TrexStreamStatistics.clear_stats(self)
 
-    def start_transmit(self, blocking=False, *ports):
+    def start_transmit(self, blocking: bool = False, *ports: Optional[List[TrexPort]]) -> None:
         """ Start traffic on list of ports.
 
-        If possible, synchroniz start of traffic, else, strat .
+        If possible, synchronize start of traffic, else, strat.
 
         :param blocking: True - wait for traffic end, False - return after traffic start.
-        :param ports: list of ports to start traffic on, if empty start on all ports.
+        :param ports: list of ports to start traffic on, if empty, start on all ports.
         """
 
         ports = ports if ports else list(self.ports.values())
@@ -156,31 +176,54 @@ class TrexServer(TrexObject):
         if blocking:
             self.wait_transmit(*ports)
 
-    def wait_transmit(self, *ports):
-        ports = ports if ports else ports.keys()
+    def wait_transmit(self, *ports: Optional[List[TrexPort]]) -> None:
+        """ Wait for transmit end on list of ports.
+
+        :param ports: list of ports to wait for, if empty, wait for all ports.
+        """
+        ports = ports if ports else list(self.ports.values())
         for port in ports:
             port.wait_transmit()
         time.sleep(4)
 
-    def stop_transmit(self, *ports):
-        ports = ports if ports else self.ports
+    def stop_transmit(self, *ports: Optional[List[TrexPort]]) -> None:
+        """ Stop traffic on list of ports.
+
+        :param ports: list of ports to stop transmit on, if empty, stop on all ports.
+        """
+        ports = ports if ports else list(self.ports.values())
         for port in ports:
             port.stop_transmit()
 
+    def start_capture(self, *ports: Optional[List[TrexPort]]) -> None:
+        """ Start capture on list of ports.
+
+        :param ports: list of ports to start capture on, if empty, start on all ports.
+        """
+        ports = ports if ports else list(self.ports.values())
+        for port in ports:
+            port.start_capture()
+
+    #
+    # Properties
+    #
+
     @property
-    def ports(self):
+    def ports(self) -> Dict[int, TrexPort]:
         """
         :return: dictionary {index: object} of all ports.
         """
         return {p.id: p for p in self.get_objects_by_type('port')}
 
+    #
+    # Private
+    #
+
     def _get_api_h(self):
         return self.api.get_api_h()
 
-    # transmit request on the RPC link
     def _transmit(self, method_name, params=None, api_class='core'):
         return self.api.rpc.transmit(method_name, params, api_class)
 
-    # transmit batch request on the RPC link
     def _transmit_batch(self, batch_list):
         return self.api.rpc.transmit_batch(batch_list)
