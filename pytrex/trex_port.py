@@ -13,7 +13,7 @@ from typing import Optional, List, Dict
 
 from .trex_object import TrexObject
 from .trex_stream import TrexStream, TrexYamlLoader
-from .api.trex_stl_types import RpcCmdData
+from .api.trex_stl_types import RpcCmdData, RC
 from .trex_capture import TrexCapture, TrexCaptureMode
 
 
@@ -216,11 +216,13 @@ class TrexPort(TrexObject):
     # Control.
     #
 
-    def get_port_state(self):
+    def get_port_state(self) -> PortState:
+        """ Get port state from server. """
         rc = self.transmit('get_port_status')
         return PortState(rc.data()['state'].lower())
 
-    def is_transmitting(self):
+    def is_transmitting(self) -> bool:
+        """ True - port is transmiting, False - port is not transmitting. """
         return self.get_port_state() in [PortState.Tx, PortState.Pcap_Tx]
 
     def start_transmit(self, blocking: Optional[bool] = False) -> None:
@@ -320,6 +322,7 @@ class TrexPort(TrexObject):
 
         :param limit: limit the number of packets that will be read from the capture buffer.
         :param output: full path to file where capture packets will be stored, if None - do not store packets in file.
+            You can run text2pcap on the resulted file and then open it with wireshark.
         """
         capture = self.get_object_by_type('capture')
         return capture.stop_capture(limit, output)
@@ -328,7 +331,7 @@ class TrexPort(TrexObject):
     # Low level.
     #
 
-    def transmit(self, command, params={}):
+    def transmit(self, command: str, params: Optional[Dict] = {}) -> RC:
         """ Transmit RPC command.
 
         :param command: RPC command

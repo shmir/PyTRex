@@ -98,4 +98,12 @@ class TrexCapture(TrexObject):
                 pkt['scapy'] = Ether(pkt['binary'])
                 self.packets.append(pkt)
 
+        if output:
+            with open(output, 'w+') as f:
+                for packet in self.packets:
+                    str_packet = str(packet['hex'])[2:-1]
+                    f.write('000000 ')
+                    f.write(' '.join(a+b for a, b in zip(str_packet[::2], str_packet[1::2])))
+                    f.write('\n')
+
         return self.packets

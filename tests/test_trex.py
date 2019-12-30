@@ -173,7 +173,7 @@ class TestOffline:
         print(json.dumps(rx_port_stats, indent=2))
         assert tx_port_stats['opackets'] == 300
         assert rx_port_stats['ipackets'] == 300
-        packets = trex.server.stop_capture()
+        packets = trex.server.stop_capture(output='c:/temp/trex_cap')
         assert len(packets[rx_port]) == 300
         assert len(rx_port.capture.packets) == 300
         print(rx_port.capture.packets[0])

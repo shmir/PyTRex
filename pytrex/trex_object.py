@@ -4,7 +4,9 @@ Base classes and utilities for all Xena Manager (Xena) objects.
 :author: yoram@ignissoft.com
 """
 
-from trafficgenerator.tgn_object import TgnObject, TgnObjectsDict
+from trafficgenerator.tgn_object import TgnObject
+
+from .api.trex_stl_types import RC
 
 
 class TrexObject(TgnObject):
@@ -24,7 +26,7 @@ class TrexObject(TgnObject):
                 data['objRef'] = f'{data["objType"]}/{data["index"]}'
         super().__init__(**data)
 
-    def transmit(self, method_name, params=None, api_class='core'):
+    def transmit(self, method_name, params=None, api_class='core') -> RC:
         return self.api.rpc.transmit(method_name, params, api_class)
 
     def transmit_batch(self, batch_list):

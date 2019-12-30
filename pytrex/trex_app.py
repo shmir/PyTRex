@@ -5,6 +5,7 @@ Classes and utilities that represents TRex GUI application.
 """
 
 from __future__ import annotations
+import os
 import random
 import getpass
 import time
@@ -222,14 +223,14 @@ class TrexServer(TrexObject):
 
         :param limit: limit the total number of packets that will be read from the capture buffer of all ports.
         :param output: prefix for the capture file name.
-            Capture files for each port will be stored in individual output file named 'prefix' + {port ID}.pcap.
-        :param cap_file_format: exported file format
+            Capture files for each port will be stored in individual output file named 'prefix-{port ID}.txt'.
         :param ports: list of ports to stop capture on, if empty, stop on all ports.
         """
         ports = ports if ports else list(self.ports.values())
         packets = {}
         for port in ports:
-            packets[port] = port.stop_capture(limit=int(limit / len(ports)))
+            port_output = f'{output}-{port.id}.txt' if output else None
+            packets[port] = port.stop_capture(limit=int(limit / len(ports)), output=port_output)
         return packets
 
     #
