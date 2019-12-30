@@ -146,8 +146,8 @@ class TrexServer(TrexObject):
 
         If possible, synchronize start of traffic, else, strat.
 
-        :param blocking: True - wait for traffic end, False - return after traffic start.
-        :param ports: list of ports to start traffic on, if empty, start on all ports.
+        :param blocking: if blockeing - wait for transmit end, else - return after transmit starts.
+        :param ports: list of ports to start transmit on, if empty, start on all ports.
         """
 
         ports = ports if ports else list(self.ports.values())
@@ -176,6 +176,15 @@ class TrexServer(TrexObject):
         if blocking:
             self.wait_transmit(*ports)
 
+    def stop_transmit(self, *ports: Optional[List[TrexPort]]) -> None:
+        """ Stop traffic on list of ports.
+
+        :param ports: list of ports to stop transmit on, if empty, stop on all ports.
+        """
+        ports = ports if ports else list(self.ports.values())
+        for port in ports:
+            port.stop_transmit()
+
     def wait_transmit(self, *ports: Optional[List[TrexPort]]) -> None:
         """ Wait for transmit end on list of ports.
 
@@ -186,14 +195,12 @@ class TrexServer(TrexObject):
             port.wait_transmit()
         time.sleep(4)
 
-    def stop_transmit(self, *ports: Optional[List[TrexPort]]) -> None:
-        """ Stop traffic on list of ports.
-
-        :param ports: list of ports to stop transmit on, if empty, stop on all ports.
-        """
-        ports = ports if ports else list(self.ports.values())
-        for port in ports:
-            port.stop_transmit()
+    def clear_capture(self):
+        """ Clear all existing capture IDs. """
+        rc = self.transmit("capture", {'command': 'status'})
+        for cid in [c['id'] for c in rc.data()]:
+            params = {'command': 'remove', 'capture_id': cid}
+            self.transmit("capture", params=params)
 
     def start_capture(self, limit: Optional[int] = 1000, mode: Optional[TrexCaptureMode] = TrexCaptureMode.fixed,
                       bpf_filter: Optional[str] = '', *ports: Optional[List[TrexPort]]) -> None:
@@ -202,11 +209,26 @@ class TrexServer(TrexObject):
         :param limit: limit the total number of captrured packets (for all ports) memory requierment is O(9K * limit).
         :param mode: when full, if fixed drop new packets, else (cyclic) drop old packets.
         :param bpf_filter:  A Berkeley Packet Filter pattern. Only packets matching the filter will be captured.
-        :param ports: list of ports to stop transmit on, if empty, stop on all ports.
+        :param ports: list of ports to start capture on, if empty, start on all ports.
         """
         ports = ports if ports else list(self.ports.values())
         for port in ports:
             port.start_capture(rx=True, tx=False, limit=int(limit / len(ports)), mode=mode, bpf_filter=bpf_filter)
+
+    def stop_capture(self, limit: Optional[int] = 1000, output: Optional[str] = None, *ports) -> Dict[TrexPort, List]:
+        """ Stop capture on list of ports.
+
+        :param limit: limit the total number of packets that will be read from the capture buffer of all ports.
+        :param output: prefix for the capture file name.
+            Capture files for each port will be stored in individual output file named 'prefix' + {port ID}.pcap.
+        :param cap_file_format: exported file format
+        :param ports: list of ports to stop capture on, if empty, stop on all ports.
+        """
+        ports = ports if ports else list(self.ports.values())
+        packets = {}
+        for port in ports:
+            packets[port] = port.stop_capture(limit=int(limit / len(ports)))
+        return packets
 
     #
     # Properties
@@ -218,16 +240,6 @@ class TrexServer(TrexObject):
         :return: dictionary {index: object} of all ports.
         """
         return {p.id: p for p in self.get_objects_by_type('port')}
-
-    #
-    # Low level.
-    #
-
-    def transmit(self, method_name, params=None, api_class='core'):
-        return self.api.rpc.transmit(method_name, params, api_class)
-
-    def transmit_batch(self, batch_list):
-        return self.api.rpc.transmit_batch(batch_list)
 
     #
     # Private

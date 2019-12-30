@@ -4,23 +4,20 @@ Classes and utilities that represents TRex port.
 :author: yoram@ignissoft.com
 """
 
+from __future__ import annotations
 import re
 import time
 from enum import Enum
 from copy import deepcopy
-from typing import Optional
+from typing import Optional, List, Dict
 
 from .trex_object import TrexObject
 from .trex_stream import TrexStream, TrexYamlLoader
 from .api.trex_stl_types import RpcCmdData
+from .trex_capture import TrexCapture, TrexCaptureMode
 
 
 MASK_ALL = ((1 << 64) - 1)
-
-
-class TrexCaptureMode(Enum):
-    fixed = 0
-    cyclic = 1
 
 
 def decode_multiplier(val, allow_update=False, divide_count=1):
@@ -119,7 +116,6 @@ class TrexPort(TrexObject):
         self.start_at_ts = 0.0
         self.statistics = None
         self.xstatistics = None
-        self.capture_id = None
 
     def reserve(self, force: Optional[bool] = False, reset: Optional[bool] = False) -> None:
         """ Reserve port.
@@ -227,7 +223,12 @@ class TrexPort(TrexObject):
     def is_transmitting(self):
         return self.get_port_state() in [PortState.Tx, PortState.Pcap_Tx]
 
-    def start_transmit(self, blocking=False):
+    def start_transmit(self, blocking: Optional[bool] = False) -> None:
+        """ Start transmit.
+
+        :param blocking: if blockeing - wait for transmit end, else - return after transmit starts.
+        :return:
+        """
 
         if self.get_port_state() == PortState.Idle:
             raise Exception('unable to start traffic - no streams attached to port')
@@ -242,55 +243,45 @@ class TrexPort(TrexObject):
         if blocking:
             self.wait_transmit()
 
-    def stop_transmit(self):
+    def stop_transmit(self) -> None:
+        """ Stop transmit. """
         self.transmit('stop_traffic')
         self.wait_transmit()
 
-    def wait_transmit(self):
+    def wait_transmit(self) -> None:
+        """ Wait until port finishes transmition. """
         while self.is_transmitting():
             time.sleep(1)
 
-    def start_capture(self, rx: Optional[bool] = True, tx: Optional[bool] = False,
-                      limit: Optional[int] = 1000, mode: Optional[TrexCaptureMode] = TrexCaptureMode.fixed,
-                      bpf_filter: Optional[str] = '') -> None:
-        """ Start capture on list of ports.
+    def start_capture(self, rx: Optional[bool] = True, tx: Optional[bool] = False, limit: Optional[int] = 1000,
+                      mode: Optional[TrexCaptureMode] = TrexCaptureMode.fixed, bpf_filter: Optional[str] = '') -> None:
+        """ Start capture.
 
         :param rx: if rx, capture RX packets, else, do not capture
         :param tx: if tx, capture TX packets, else, do not capture
-        :param limit: limit the total number of captrured packets (RX and TX) memory requierment is O(9K * limit).
+        :param limit: limit the total number of captured packets (RX and TX) memory requierment is O(9K * limit).
         :param mode: when full, if fixed drop new packets, else (cyclic) drop old packets.
         :param bpf_filter:  A Berkeley Packet Filter pattern. Only packets matching the filter will be captured.
         """
 
         self.set_service_mode(enabled=True)
-        params = {'command': 'start',
-                  'limit': limit,
-                  'mode': mode.name,
-                  'rx': [self.id] if rx else [],
-                  'tx': [self.id] if tx else [],
-                  'filter': bpf_filter}
-        rc = self.parent.transmit("capture", params=params)
-        self.capture_id = rc.data()['capture_id']
+        capture = self.get_object_by_type('capture')
+        if not self.get_object_by_type('capture'):
+            capture = TrexCapture(self)
+        capture.start(rx, tx, limit, mode, bpf_filter)
 
-    def stop_capture(self, output):
+    def stop_capture(self, limit: Optional[int] = 1000, output: Optional[str] = None) -> List[Dict]:
+        """ Stop catture.
 
-        params = {'command': 'stop',
-                  'capture_id': self.capture_id}
-        rc = self.parent.transmit("capture", params=params)
-        pkt_count = rc.data()['pkt_count']
-        packets = self.fetch_capture_packets(output, pkt_count)
-
-        params = {'command': 'remove',
-                  'capture_id': self.capture_id}
-        self.parent.transmit("capture", params=params)
-
-        return packets
-
-    def fetch_capture_packets(self, output, pkt_count):
-        pass
+        :param limit: limit the number of packets that will be read from the capture buffer.
+        :param output: full path to file where capture packets will be stored, if None - do not store packets in file.
+        """
+        capture = self.get_object_by_type('capture')
+        return capture.stop_capture(limit, output)
 
     #
     # Statistics.
+    #
 
     def clear_stats(self):
         values = self.transmit('get_port_xstats_values').data()
@@ -327,15 +318,16 @@ class TrexPort(TrexObject):
         """
         params['port_id'] = int(self.id)
         params['handler'] = self.handler
-        return self.api.rpc.transmit(command, params)
+        return super().transmit(command, params)
 
     #
     # Properties.
     #
 
     @property
-    def streams(self):
-        """
-        :return: dictionary {name: object} of all streams.
-        """
+    def streams(self) -> Dict[str, TrexPort]:
         return {s.name: s for s in self.get_objects_by_type('stream')}
+
+    @property
+    def capture(self) -> TrexCapture:
+        return self.get_object_by_type('capture')

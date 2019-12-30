@@ -16,8 +16,16 @@ class TrexObject(TgnObject):
             self.username = data['parent'].username
             self.session_id = data['parent'].session_id
             self.server = data['parent'].server
-            if data['parent']._data.get('index'):
-                data['objRef'] = f'{data["objType"]}/{data["parent"].index}/{data["index"]}'
+            if data['parent']._data.get('index') is not None:
+                data['objRef'] = f'{data["objType"]}/{data["parent"].index}'
+                if 'index' in data:
+                    data['objRef'] += f'{data["index"]}'
             else:
                 data['objRef'] = f'{data["objType"]}/{data["index"]}'
         super().__init__(**data)
+
+    def transmit(self, method_name, params=None, api_class='core'):
+        return self.api.rpc.transmit(method_name, params, api_class)
+
+    def transmit_batch(self, batch_list):
+        return self.api.rpc.transmit_batch(batch_list)

@@ -146,20 +146,35 @@ class TestOffline:
         port_0.write_streams()
 
     def test_packets(self, trex, ports):
-        trex_ports = trex.server.reserve_ports(ports[0:1], force=True, reset=True)
+        trex_ports = trex.server.reserve_ports(ports, force=True, reset=True)
         tx_port = list(trex_ports.values())[0]
+        rx_port = list(trex_ports.values())[1]
         stream_0 = tx_port.add_stream('s1')
         stream_1 = tx_port.add_stream('s2')
 
-        stream_0.set_rate(TrexRateType.pps, 100)
-        stream_0.set_tx_type(TrexTxType.single_burst, packets=10)
+        stream_0.set_rate(TrexRateType.pps, 50)
+        stream_0.set_tx_type(TrexTxType.single_burst, packets=100)
         stream_0.set_next('s2')
-        stream_0.set_packet(STLPktBuilder(pkt=Ether()/IP(src='10.10.10.10')))
+        packet = STLPktBuilder(pkt=Ether(src='11:11:11:11:11:11') / IP(src='10.10.10.10'))
+        stream_0.set_packet(packet)
 
-        stream_1.set_rate(TrexRateType.pps, 100)
-        stream_1.set_tx_type(TrexTxType.multi_burst, packets=2, ibg=0.0, count=1)
-        stream_1.set_packet(STLPktBuilder(pkt=Ether()/IP(src='20.20.20.20')))
+        stream_1.set_rate(TrexRateType.pps, 50)
+        stream_1.set_tx_type(TrexTxType.multi_burst, packets=200, ibg=0.0, count=1)
+        packet = STLPktBuilder(pkt=Ether(src='22:22:22:22:22:22') / IP(src='20.20.20.20'))
+        stream_1.set_packet(packet)
 
         tx_port.write_streams()
+        trex.server.clear_stats()
+        trex.server.clear_capture()
         trex.server.start_capture()
-        # trex.server.start_transmit(True, tx_port)
+        trex.server.start_transmit(True, tx_port)
+        tx_port_stats = tx_port.read_stats()
+        rx_port_stats = rx_port.read_stats()
+        print(json.dumps(tx_port_stats, indent=2))
+        print(json.dumps(rx_port_stats, indent=2))
+        assert tx_port_stats['opackets'] == 300
+        assert rx_port_stats['ipackets'] == 300
+        packets = trex.server.stop_capture()
+        assert len(packets[rx_port]) == 300
+        assert len(rx_port.capture.packets) == 300
+        print(rx_port.capture.packets[0])
