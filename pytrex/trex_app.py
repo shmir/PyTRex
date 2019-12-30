@@ -195,12 +195,14 @@ class TrexServer(TrexObject):
             port.wait_transmit()
         time.sleep(4)
 
-    def clear_capture(self):
-        """ Clear all existing capture IDs. """
-        rc = self.transmit("capture", {'command': 'status'})
-        for cid in [c['id'] for c in rc.data()]:
-            params = {'command': 'remove', 'capture_id': cid}
-            self.transmit("capture", params=params)
+    def clear_capture(self, *ports: Optional[List[TrexPort]]) -> None:
+        """ Clear all existing capture IDs on list ports.
+
+        :param ports: list of ports to clear capture on, if empty, clear on all ports.
+        """
+        ports = ports if ports else list(self.ports.values())
+        for port in ports:
+            port.clear_capture(rx=True, tx=True)
 
     def start_capture(self, limit: Optional[int] = 1000, mode: Optional[TrexCaptureMode] = TrexCaptureMode.fixed,
                       bpf_filter: Optional[str] = '', *ports: Optional[List[TrexPort]]) -> None:

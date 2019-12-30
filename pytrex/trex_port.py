@@ -253,32 +253,6 @@ class TrexPort(TrexObject):
         while self.is_transmitting():
             time.sleep(1)
 
-    def start_capture(self, rx: Optional[bool] = True, tx: Optional[bool] = False, limit: Optional[int] = 1000,
-                      mode: Optional[TrexCaptureMode] = TrexCaptureMode.fixed, bpf_filter: Optional[str] = '') -> None:
-        """ Start capture.
-
-        :param rx: if rx, capture RX packets, else, do not capture
-        :param tx: if tx, capture TX packets, else, do not capture
-        :param limit: limit the total number of captured packets (RX and TX) memory requierment is O(9K * limit).
-        :param mode: when full, if fixed drop new packets, else (cyclic) drop old packets.
-        :param bpf_filter:  A Berkeley Packet Filter pattern. Only packets matching the filter will be captured.
-        """
-
-        self.set_service_mode(enabled=True)
-        capture = self.get_object_by_type('capture')
-        if not self.get_object_by_type('capture'):
-            capture = TrexCapture(self)
-        capture.start(rx, tx, limit, mode, bpf_filter)
-
-    def stop_capture(self, limit: Optional[int] = 1000, output: Optional[str] = None) -> List[Dict]:
-        """ Stop catture.
-
-        :param limit: limit the number of packets that will be read from the capture buffer.
-        :param output: full path to file where capture packets will be stored, if None - do not store packets in file.
-        """
-        capture = self.get_object_by_type('capture')
-        return capture.stop_capture(limit, output)
-
     #
     # Statistics.
     #
@@ -305,6 +279,50 @@ class TrexPort(TrexObject):
         for stat, value in self.xstatistics.items():
             self.statistics[stat] = value - self.base_xstats[stat]
         return self.xstatistics
+
+    #
+    # Capture
+    #
+
+    def clear_capture(self, rx: Optional[bool] = True, tx: Optional[bool] = False) -> None:
+        """ Clear existing capture IDs on the port.
+
+        :param rx: if rx, clear RX captures, else, do not clear
+        :param tx: if tx, clear TX captures, else, do not clear
+        """
+        rc = self.transmit("capture", {'command': 'status'})
+        for capture in rc.data():
+            if (rx and int(capture['filter']['rx']) - 1 == self.id or
+                    tx and int(capture['filter']['tx']) - 1 == self.id):
+                params = {'command': 'remove', 'capture_id': capture['id']}
+                self.transmit("capture", params=params)
+
+    def start_capture(self, rx: Optional[bool] = True, tx: Optional[bool] = False, limit: Optional[int] = 1000,
+                      mode: Optional[TrexCaptureMode] = TrexCaptureMode.fixed, bpf_filter: Optional[str] = '') -> None:
+        """ Start capture.
+
+        :param rx: if rx, capture RX packets, else, do not capture
+        :param tx: if tx, capture TX packets, else, do not capture
+        :param limit: limit the total number of captured packets (RX and TX) memory requierment is O(9K * limit).
+        :param mode: when full, if fixed drop new packets, else (cyclic) drop old packets.
+        :param bpf_filter:  A Berkeley Packet Filter pattern. Only packets matching the filter will be captured.
+        """
+
+        self.clear_capture(rx=rx, tx=tx)
+        self.set_service_mode(enabled=True)
+        capture = self.get_object_by_type('capture')
+        if not self.get_object_by_type('capture'):
+            capture = TrexCapture(self)
+        capture.start(rx, tx, limit, mode, bpf_filter)
+
+    def stop_capture(self, limit: Optional[int] = 1000, output: Optional[str] = None) -> List[Dict]:
+        """ Stop catture.
+
+        :param limit: limit the number of packets that will be read from the capture buffer.
+        :param output: full path to file where capture packets will be stored, if None - do not store packets in file.
+        """
+        capture = self.get_object_by_type('capture')
+        return capture.stop_capture(limit, output)
 
     #
     # Low level.

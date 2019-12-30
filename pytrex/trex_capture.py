@@ -2,6 +2,7 @@
 import base64
 from typing import Optional, List, Dict
 from enum import Enum
+from scapy.layers.l2 import Ether
 
 from .trex_object import TrexObject
 
@@ -94,6 +95,7 @@ class TrexCapture(TrexObject):
                 pkt['rel_ts'] = pkt['ts'] - start_ts
                 pkt['binary'] = base64.b64decode(pkt['binary'])
                 pkt['hex'] = binascii.hexlify(pkt['binary'])
+                pkt['scapy'] = Ether(pkt['binary'])
                 self.packets.append(pkt)
 
         return self.packets

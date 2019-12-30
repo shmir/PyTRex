@@ -165,7 +165,6 @@ class TestOffline:
 
         tx_port.write_streams()
         trex.server.clear_stats()
-        trex.server.clear_capture()
         trex.server.start_capture()
         trex.server.start_transmit(True, tx_port)
         tx_port_stats = tx_port.read_stats()
@@ -178,3 +177,5 @@ class TestOffline:
         assert len(packets[rx_port]) == 300
         assert len(rx_port.capture.packets) == 300
         print(rx_port.capture.packets[0])
+        assert rx_port.capture.packets[0]['scapy'].src in ['11:11:11:11:11:11', '22:22:22:22:22:22']
+        assert rx_port.capture.packets[0]['scapy'].payload.src in ['10.10.10.10', '20.20.20.20']
