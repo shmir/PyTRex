@@ -135,6 +135,7 @@ class TrexPort(TrexObject):
 
         if reset:
             self.reset()
+        self.set_promiscuous_mode(enabled=True)
 
     def release(self):
         """ Release port.
@@ -162,6 +163,17 @@ class TrexPort(TrexObject):
                   "session_id": self.session_id,
                   "enabled": enabled}
         self.transmit("service", params)
+
+    def set_promiscuous_mode(self, enabled):
+        params = {"port_id": int(self.index),
+                  "session_id": self.session_id,
+                  "attr":{
+                      "promiscuous": {
+                      "enabled" : enabled
+                                    }
+                        }
+                  }
+        self.transmit("set_port_attr", params)
 
     #
     # Streams.
