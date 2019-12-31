@@ -144,6 +144,7 @@ class TrexPort(TrexObject):
         self.transmit('release')
 
     def reset(self) -> None:
+        self.stop_transmit()  # in case port is already transmitting it's not possible to remove streams
         self.remove_all_streams()
 
     #
