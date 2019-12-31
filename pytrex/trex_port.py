@@ -135,7 +135,6 @@ class TrexPort(TrexObject):
 
         if reset:
             self.reset()
-        self.set_promiscuous_mode(enabled=True)
 
     def release(self):
         """ Release port.
@@ -145,34 +144,28 @@ class TrexPort(TrexObject):
         self.transmit('release')
 
     def reset(self) -> None:
-        self.stop_transmit()  # in case port is already transmitting it's not possible to remove streams
+        self.stop_transmit()
+        self.set_promiscuous_mode(enabled=True)
         self.remove_all_streams()
 
     #
     # Configuration.
+    # todo: should we move session_id to transmit?
     #
 
     def get_status(self):
-        params = {"port_id": int(self.index),
-                  "session_id": self.session_id}
-        rc = self.api.rpc.transmit("get_port_status", params)
+        params = {'session_id': self.session_id}
+        rc = self.api.rpc.transmit('get_port_status', params)
         return rc.data()
 
     def set_service_mode(self, enabled):
-        params = {"port_id": int(self.index),
-                  "session_id": self.session_id,
-                  "enabled": enabled}
+        params = {'session_id': self.session_id,
+                  'enabled': enabled}
         self.transmit("service", params)
 
     def set_promiscuous_mode(self, enabled):
-        params = {"port_id": int(self.index),
-                  "session_id": self.session_id,
-                  "attr":{
-                      "promiscuous": {
-                      "enabled" : enabled
-                                    }
-                        }
-                  }
+        params = {'session_id': self.session_id,
+                  'attr': {'promiscuous': {'enabled' : enabled}}}
         self.transmit("set_port_attr", params)
 
     #
