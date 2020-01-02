@@ -44,10 +44,10 @@ class TestOffline:
     def test_inventory(self, trex):
         sys_info = trex.server.get_system_info()
         supported_cmds = trex.server.get_supported_cmds()
-        print(f'server: {sys_info["core_type"]}')
+        print('server: {}'.format(sys_info["core_type"]))
         for port in sys_info['ports']:
-            print(f'\tport: {port["description"]}')
-        print(f'commands: {supported_cmds}')
+            print('\tport: {}'.format(port["description"]))
+        print('commands: {}'.format(supported_cmds))
 
     def test_reserve_ports(self, trex, ports):
         trex_ports = trex.server.reserve_ports(ports, force=True)
