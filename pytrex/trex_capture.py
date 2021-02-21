@@ -1,8 +1,9 @@
 
 import base64
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Type
 from enum import Enum
 from scapy.layers.l2 import Ether
+from trafficgenerator.tgn_object import TgnObject
 
 from .trex_object import TrexObject
 
@@ -13,6 +14,27 @@ class TrexCaptureMode(Enum):
 
 
 class TrexCapture(TrexObject):
+
+    def _create(self, **attributes: Dict[str, object]) -> str:
+        pass
+
+    def get_name(self) -> str:
+        pass
+
+    def get_attributes(self) -> Dict[str, str]:
+        pass
+
+    def get_attribute(self, attribute: str) -> str:
+        pass
+
+    def get_children(self, *types: str) -> List[TgnObject]:
+        pass
+
+    def get_objects_from_attribute(self, attribute: str) -> List[TgnObject]:
+        pass
+
+    def get_obj_class(self, obj_type: str) -> Type[TgnObject]:
+        pass
 
     def __init__(self, parent):
         super().__init__(objType='capture', parent=parent)

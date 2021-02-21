@@ -10,9 +10,10 @@ import random
 import getpass
 import time
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Type
 
 from trafficgenerator.tgn_app import TgnApp
+from trafficgenerator.tgn_object import TgnObject
 from trafficgenerator.tgn_utils import ApiType
 from .trex_object import TrexObject
 from .trex_port import TrexPort, TrexCaptureMode
@@ -60,6 +61,27 @@ class TrexApp(TgnApp):
 
 class TrexServer(TrexObject):
     """ Represents single TRex server. """
+
+    def _create(self, **attributes: Dict[str, object]) -> str:
+        pass
+
+    def get_name(self) -> str:
+        pass
+
+    def get_attributes(self) -> Dict[str, str]:
+        pass
+
+    def get_attribute(self, attribute: str) -> str:
+        pass
+
+    def get_children(self, *types: str) -> List[TgnObject]:
+        pass
+
+    def get_objects_from_attribute(self, attribute: str) -> List[TgnObject]:
+        pass
+
+    def get_obj_class(self, obj_type: str) -> Type[TgnObject]:
+        pass
 
     def __init__(self, logger: logging.Logger, username: str, ip: str, port: Optional[int] = 4501,
                  async_port: Optional[int] = 4500, virtual: Optional[bool] = False) -> None:

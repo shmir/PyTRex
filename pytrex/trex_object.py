@@ -3,6 +3,7 @@ Base classes and utilities for all Xena Manager (Xena) objects.
 
 :author: yoram@ignissoft.com
 """
+from typing import Type, List, Dict
 
 from trafficgenerator.tgn_object import TgnObject
 
@@ -11,6 +12,27 @@ from .api.trex_stl_types import RC
 
 class TrexObject(TgnObject):
     """ Base class for all Trex objects. """
+
+    def _create(self, **attributes: Dict[str, object]) -> str:
+        pass
+
+    def get_name(self) -> str:
+        pass
+
+    def get_attributes(self) -> Dict[str, str]:
+        pass
+
+    def get_attribute(self, attribute: str) -> str:
+        pass
+
+    def get_children(self, *types: str) -> List[TgnObject]:
+        pass
+
+    def get_objects_from_attribute(self, attribute: str) -> List[TgnObject]:
+        pass
+
+    def get_obj_class(self, obj_type: str) -> Type[TgnObject]:
+        pass
 
     def __init__(self, **data):
         """ Create TRex object. """
