@@ -2,6 +2,7 @@
 # user/password: marvell/123456
 
 chassis = '10.5.210.72'
+chassis = '172.17.0.2'
 ports = [0, 1]
 
 

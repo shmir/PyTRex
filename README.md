@@ -15,7 +15,7 @@ $ cd /trex/var/trex/v2.41/
 $ sudo /trex/var/trex/v2.41/t-rex-64 -i
 ```
 ### TRex client
-Install oracle JDK version 8.
+Install Oracle JDK version 8.
 Download and install [trex stateless GUI](https://github.com/cisco-system-traffic-generator/trex-stateless-gui/releases)
 ```bash
 $ java -jar trex-stateless-gui.jar
