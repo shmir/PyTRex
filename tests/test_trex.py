@@ -75,16 +75,16 @@ class TestOffline:
         rx_port_stats = rx_port.read_stats()
         print(json.dumps(tx_port_stats, indent=2))
         print(json.dumps(rx_port_stats, indent=2))
-        assert tx_port_stats['total_tx_pkts'] == 0
-        assert rx_port_stats['total_rx_pkts'] == 0
+        assert tx_port_stats['opackets'] == 0
+        assert rx_port_stats['ipackets'] == 0
 
         trex.server.start_transmit(True, tx_port)
         tx_port_stats = tx_port.read_stats()
         rx_port_stats = rx_port.read_stats()
         print(json.dumps(tx_port_stats, indent=2))
         print(json.dumps(rx_port_stats, indent=2))
-        assert tx_port_stats['total_tx_pkts'] == 300
-        assert rx_port_stats['total_rx_pkts'] == 300
+        assert tx_port_stats['opackets'] == 300
+        assert rx_port_stats['ipackets'] == 300
 
     def test_bidir_traffic(self, trex, ports):
         trex_ports = trex.server.reserve_ports(ports, force=True)
@@ -139,7 +139,7 @@ class TestOffline:
         trex.server.start_transmit(True)
         stream_stats_view.read()
         assert stream_stats_view.statistics[stream_0]['tx']['tp'] == 100
-        assert stream_stats_view.statistics[stream_0]['rx'][port_1]['rp'] == 100
+        assert stream_stats_view.statistics[stream_0]['rx'][port_1]['rp'] == 200
 
         # Add stream and re-write.
         port_0.add_stream('name_stream')
