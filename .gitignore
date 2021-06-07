@@ -8,3 +8,5 @@ trex_stl_lib.egg-info
 
 *.pyc
 pytrex.egg-info
+
+build

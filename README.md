@@ -1,3 +1,4 @@
+## Python OO API for Cisco TRex.
 
 ### TRex on docker
 Run container
@@ -14,7 +15,7 @@ $ cd /trex/var/trex/v2.41/
 $ sudo /trex/var/trex/v2.41/t-rex-64 -i
 ```
 ### TRex client
-Install oracle JDK version 8.
+Install Oracle JDK version 8.
 Download and install [trex stateless GUI](https://github.com/cisco-system-traffic-generator/trex-stateless-gui/releases)
 ```bash
 $ java -jar trex-stateless-gui.jar
@@ -24,20 +25,3 @@ $ java -jar trex-stateless-gui.jar
 - RPC commands
   - https://trex-tgn.cisco.com/trex/doc/trex_rpc_server_spec.html#_rpc_commands_common
   - https://trex-tgn.cisco.com/trex/doc/trex_rpc_server_spec.html#_rpc_commands_stl
-
-### trex_stl_lib pros and cons
-- Pros
-  - OO
-  - Working and fully functional
-  - Implements all asynch coomands 
-- Cons
-  - Java style
-  - Using rc instead of try/exception
-  - Proprietery logger
-  - Not python 2, tested on Python 3.6 and later
-  - Way too many decorators up to the point where debug is not fluent.
-  - If we can get rid of asynch, will be better
-
-### Requirements
-- start trex on remote machine if not running (p3)
-

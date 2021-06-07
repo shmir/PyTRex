@@ -1,6 +1,7 @@
-pyyaml
+future
 
-pytest
+pyyaml
 scapy==2.4.3
-pyzmq==18.1.1
-pytrafficgen==1.6.0
+pyzmq
+
+pytrafficgen>=3.0.3,<3.1.0

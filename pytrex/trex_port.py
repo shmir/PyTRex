@@ -4,13 +4,17 @@ Classes and utilities that represents TRex port.
 :author: yoram@ignissoft.com
 """
 
+from __future__ import annotations
 import re
 import time
 from enum import Enum
+from copy import deepcopy
+from typing import Optional, List, Dict
 
 from .trex_object import TrexObject
 from .trex_stream import TrexStream, TrexYamlLoader
-from .api.trex_stl_types import RpcCmdData
+from .api.trex_stl_types import RpcCmdData, RC
+from .trex_capture import TrexCapture, TrexCaptureMode
 
 
 MASK_ALL = ((1 << 64) - 1)
@@ -113,12 +117,13 @@ class TrexPort(TrexObject):
         self.statistics = None
         self.xstatistics = None
 
-    def reserve(self, force=False):
+    def reserve(self, force: Optional[bool] = False, reset: Optional[bool] = False) -> None:
         """ Reserve port.
 
         TRex -> Port -> [Force] Acquire.
 
         :param force: True - take forcefully, False - fail if port is reserved by other user
+        :param reset: True - reset port, False - leave port configuration
         """
 
         params = {"port_id": int(self.index),
@@ -128,6 +133,9 @@ class TrexPort(TrexObject):
         rc = self.api.rpc.transmit("acquire", params)
         self.handler = rc.data()
 
+        if reset:
+            self.reset()
+
     def release(self):
         """ Release port.
 
@@ -135,17 +143,47 @@ class TrexPort(TrexObject):
         """
         self.transmit('release')
 
+    def reset(self) -> None:
+        self.stop_transmit()
+        self.set_promiscuous_mode(enabled=True)
+        self.remove_all_streams()
+
+    #
+    # Configuration.
+    # todo: should we move session_id to transmit?
+    #
+
+    def get_status(self):
+        params = {'session_id': self.session_id}
+        rc = self.api.rpc.transmit('get_port_status', params)
+        return rc.data()
+
+    def set_service_mode(self, enabled):
+        params = {'session_id': self.session_id,
+                  'enabled': enabled}
+        self.transmit("service", params)
+
+    def set_promiscuous_mode(self, enabled):
+        params = {'session_id': self.session_id,
+                  'attr': {'promiscuous': {'enabled' : enabled}}}
+        self.transmit("set_port_attr", params)
+
     #
     # Streams.
     #
 
-    def remove_all_streams(self):
+    def remove_all_streams(self) -> None:
+        self.del_objects_by_type('stream')
         self.transmit('remove_all_streams')
 
-    def add_stream(self, name):
+    def add_stream(self, name: str) -> TrexStream:
+        """ Add stream with default configuration.
+
+        :param name: unique stream name
+        """
         return TrexStream(self, index=len(self.streams), name=name)
 
-    def load_streams(self, yaml_file):
+    def load_streams(self, yaml_file) -> None:
         """ Load streams from YAML file.
 
         :param yaml_file: full path to yaml profile file.
@@ -160,21 +198,21 @@ class TrexPort(TrexObject):
         """
         raise NotImplementedError()
 
-    def write_streams(self):
+    def write_streams(self) -> None:
         """ Write all streams to server. """
+
+        self.transmit('remove_all_streams')
         batch = []
         for name, stream in self.streams.items():
+            stream_fields = deepcopy(stream.fields)
             stream_id = list(self.streams.keys()).index(name) + 1
-            next_id = list(self.streams.keys()).index(stream.next) + 1 if stream.next else -1
-
-            stream_json = stream.to_json()
-            stream_json['next_stream_id'] = next_id
+            next_stream = stream_fields.pop('next_stream')
+            stream_fields['next_stream_id'] = list(self.streams.keys()).index(next_stream) + 1 if next_stream else -1
 
             params = {"handler": self.handler,
                       "port_id": int(self.id),
                       "stream_id": stream_id,
-                      "stream": stream_json}
-
+                      "stream": stream_fields}
             cmd = RpcCmdData('add_stream', params, 'core')
             batch.append(cmd)
 
@@ -184,14 +222,21 @@ class TrexPort(TrexObject):
     # Control.
     #
 
-    def get_port_state(self):
+    def get_port_state(self) -> PortState:
+        """ Get port state from server. """
         rc = self.transmit('get_port_status')
         return PortState(rc.data()['state'].lower())
 
-    def is_transmitting(self):
+    def is_transmitting(self) -> bool:
+        """ True - port is transmiting, False - port is not transmitting. """
         return self.get_port_state() in [PortState.Tx, PortState.Pcap_Tx]
 
-    def start_transmit(self, blocking=False):
+    def start_transmit(self, blocking: Optional[bool] = False) -> None:
+        """ Start transmit.
+
+        :param blocking: if blockeing - wait for transmit end, else - return after transmit starts.
+        :return:
+        """
 
         if self.get_port_state() == PortState.Idle:
             raise Exception('unable to start traffic - no streams attached to port')
@@ -206,11 +251,13 @@ class TrexPort(TrexObject):
         if blocking:
             self.wait_transmit()
 
-    def stop_transmit(self):
+    def stop_transmit(self) -> None:
+        """ Stop transmit. """
         self.transmit('stop_traffic')
         self.wait_transmit()
 
-    def wait_transmit(self):
+    def wait_transmit(self) -> None:
+        """ Wait until port finishes transmition. """
         while self.is_transmitting():
             time.sleep(1)
 
@@ -242,10 +289,55 @@ class TrexPort(TrexObject):
         return self.xstatistics
 
     #
-    # Private.
+    # Capture
     #
 
-    def transmit(self, command, params={}):
+    def clear_capture(self, rx: Optional[bool] = True, tx: Optional[bool] = False) -> None:
+        """ Clear existing capture IDs on the port.
+
+        :param rx: if rx, clear RX captures, else, do not clear
+        :param tx: if tx, clear TX captures, else, do not clear
+        """
+        rc = self.transmit("capture", {'command': 'status'})
+        for capture in rc.data():
+            if (rx and int(capture['filter']['rx']) - 1 == self.id or
+                    tx and int(capture['filter']['tx']) - 1 == self.id):
+                params = {'command': 'remove', 'capture_id': capture['id']}
+                self.transmit("capture", params=params)
+
+    def start_capture(self, rx: Optional[bool] = True, tx: Optional[bool] = False, limit: Optional[int] = 1000,
+                      mode: Optional[TrexCaptureMode] = TrexCaptureMode.fixed, bpf_filter: Optional[str] = '') -> None:
+        """ Start capture.
+
+        :param rx: if rx, capture RX packets, else, do not capture
+        :param tx: if tx, capture TX packets, else, do not capture
+        :param limit: limit the total number of captured packets (RX and TX) memory requierment is O(9K * limit).
+        :param mode: when full, if fixed drop new packets, else (cyclic) drop old packets.
+        :param bpf_filter:  A Berkeley Packet Filter pattern. Only packets matching the filter will be captured.
+        """
+
+        self.clear_capture(rx=rx, tx=tx)
+        self.set_service_mode(enabled=True)
+        capture = self.get_object_by_type('capture')
+        if not self.get_object_by_type('capture'):
+            capture = TrexCapture(self)
+        capture.start(rx, tx, limit, mode, bpf_filter)
+
+    def stop_capture(self, limit: Optional[int] = 1000, output: Optional[str] = None) -> List[Dict]:
+        """ Stop catture.
+
+        :param limit: limit the number of packets that will be read from the capture buffer.
+        :param output: full path to file where capture packets will be stored, if None - do not store packets in file.
+            You can run text2pcap on the resulted file and then open it with wireshark.
+        """
+        capture = self.get_object_by_type('capture')
+        return capture.stop_capture(limit, output)
+
+    #
+    # Low level.
+    #
+
+    def transmit(self, command: str, params: Optional[Dict] = {}) -> RC:
         """ Transmit RPC command.
 
         :param command: RPC command
@@ -253,11 +345,16 @@ class TrexPort(TrexObject):
         """
         params['port_id'] = int(self.id)
         params['handler'] = self.handler
-        return self.api.rpc.transmit(command, params)
+        return super().transmit(command, params)
+
+    #
+    # Properties.
+    #
 
     @property
-    def streams(self):
-        """
-        :return: dictionary {name: object} of all streams.
-        """
+    def streams(self) -> Dict[str, TrexPort]:
         return {s.name: s for s in self.get_objects_by_type('stream')}
+
+    @property
+    def capture(self) -> TrexCapture:
+        return self.get_object_by_type('capture')
