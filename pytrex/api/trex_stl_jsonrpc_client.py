@@ -239,7 +239,7 @@ class JsonRpcClient:
         self.port = port if port else self.port
 
         #  Socket to talk to server
-        self.transport = "tcp://{0}:{1}".format(self.server, self.port)
+        self.transport = f"tcp://{self.server}:{self.port}"
 
         self.socket = self.context.socket(zmq.REQ)
         self.socket.connect(self.transport)

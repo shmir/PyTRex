@@ -3,11 +3,11 @@
 ### TRex on docker
 Run container
 ```bash
-$ docker run -itd --privileged --cap-add=ALL -p 8090:8090 -p 4500:4500 -p 4501:4501 -p 4507:4507 --name trex trexcisco/trex:latest
+$ docker run -itd --privileged --cap-add=ALL -p 8090:8090 -p 4500:4500 -p 4501:4501 -p 4507:4507 --name trex trex/89
 ```
 Run TRex server on container
 ```bash
-$ docker exec -d trex sh -c "cd /var/trex/v2.41 ; sudo ./t-rex-64 -i" 
+$ docker exec --privileged -d trex sh -c "/etc/create_two_veth ; cd /v2.89 ; sudo ./t-rex-64 -i"
 ```
 ### TRex on Linux
 ```bash

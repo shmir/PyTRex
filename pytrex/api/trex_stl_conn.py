@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
 import os
+import re
 import signal
 import time
-import logging
 
 from .trex_stl_async_client import CTRexAsyncClient
 from .trex_stl_jsonrpc_client import JsonRpcClient
@@ -220,7 +220,13 @@ class Connection:
         self.rpc.connect()
 
         # API sync
-        rc = self.rpc.transmit('api_sync', params={'api_vers': self.api_vers}, api_class=None)
+        try:
+            rc = self.rpc.transmit('api_sync', params={'api_vers': self.api_vers}, api_class=None)
+        except Exception as err:
+            version = re.findall(".*server: \\'(.*)\\',.*", str(err))[0]
+            self.api_vers[0]["major"] = int(version.split(".")[0])
+            self.api_vers[0]["minor"] = int(version.split(".")[1])
+            rc = self.rpc.transmit('api_sync', params={'api_vers': self.api_vers}, api_class=None)
         self.logger.debug(rc)
 
         # get the API_H
