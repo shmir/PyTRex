@@ -9,16 +9,11 @@ import signal
 import threading
 import time
 
-from .trex_stl_types import RC_ERR, RC_OK
-
-from ..text_opts import format_num
-from ..zipmsg import ZippedMsg
-
 import zmq
 
-# import traceback
-
-# from .trex_stl_jsonrpc_client import JsonRpcClient, BatchMessage
+from .. import TrexError
+from ..text_opts import format_num
+from ..zipmsg import ZippedMsg
 
 
 # basic async stats class
@@ -56,16 +51,14 @@ class CTRexAsyncStats(object):
             return "N/A"
 
         if not format:
-            return(self.current[field] - self.ref_point[field])
+            return self.current[field] - self.ref_point[field]
         else:
-            return format_num(self.current[field]
-                              - self.ref_point[field], suffix)
+            return format_num(self.current[field] - self.ref_point[field], suffix)
 
     # return true if new data has arrived in the past 2 seconds
     def is_online(self):
-        delta_ms = (datetime.datetime.now() -
-                    self.last_update_ts).total_seconds() * 1000
-        return(delta_ms < 2000)
+        delta_ms = (datetime.datetime.now() - self.last_update_ts).total_seconds() * 1000
+        return delta_ms < 2000
 
 
 # describes the general stats provided by TRex
@@ -84,7 +77,7 @@ class CTRexAsyncStatsPort(CTRexAsyncStats):
 
 
 # stats manager
-class CTRexAsyncStatsManager():
+class CTRexAsyncStatsManager:
     def __init__(self):
 
         self.general_stats = CTRexAsyncStatsGeneral()
@@ -112,7 +105,7 @@ class CTRexAsyncStatsManager():
         for key, value in list(snapshot.items()):
 
             # match a pattern of ports
-            m = re.search(r'(.*)\-([0-8])', key)
+            m = re.search(r"(.*)\-([0-8])", key)
             if m:
 
                 port_id = m.group(2)
@@ -139,7 +132,7 @@ class CTRexAsyncStatsManager():
             self.port_stats[port_id].update(data)
 
 
-class CTRexAsyncClient():
+class CTRexAsyncClient:
     THREAD_STATE_ACTIVE = 1
     THREAD_STATE_ZOMBIE = 2
     THREAD_STATE_DEAD = 3
@@ -191,11 +184,13 @@ class CTRexAsyncClient():
 
         self.connected = True
 
+        # v2.61 requires barrier, v2.99 does not
+        # https: // github.com / cisco - system - traffic - generator / trex - core / issues / 698
         # first barrier - make sure async thread is up
-        rc = self.barrier()
-        if not rc:
-            self.disconnect()
-            raise Exception('Failed to connect to the async channel')
+        try:
+            self.barrier()
+        except TrexError:
+            pass
 
     # disconnect
     def disconnect(self):
@@ -223,7 +218,7 @@ class CTRexAsyncClient():
     def _run_safe(self):
 
         # socket must be created on the same thread
-        self.socket.setsockopt(zmq.SUBSCRIBE, b'')
+        self.socket.setsockopt(zmq.SUBSCRIBE, b"")
         self.socket.setsockopt(zmq.RCVTIMEO, self.get_timeout_sec() * 1000)
         self.socket.connect(self.tr)
 
@@ -234,7 +229,7 @@ class CTRexAsyncClient():
 
             # kill all the threads in the group
             os.killpg(os.getppid(), signal.SIGTERM)
-            print('General failure: ' + error)
+            print("General failure: " + error)
 
         finally:
             # closing of socket must be from the same thread
@@ -285,15 +280,14 @@ class CTRexAsyncClient():
 
             except zmq.ContextTerminated:
                 # outside thread signaled us to exit
-                assert(self.t_state != self.THREAD_STATE_ACTIVE)
+                assert self.t_state != self.THREAD_STATE_ACTIVE
                 break
 
             msg = json.loads(line)
-
-            name = msg['name']
-            data = msg['data']
-            type = msg['type']
-            baseline = msg.get('baseline', False)
+            name = msg["name"]
+            data = msg["data"]
+            type = msg["type"]
+            baseline = msg.get("baseline", False)
 
             self.raw_snapshot[name] = data
 
@@ -331,38 +325,34 @@ class CTRexAsyncClient():
 
     # async barrier handling routine
     def handle_async_barrier(self, type, data):
-        if self.async_barrier['key'] == type:
-            self.async_barrier['ack'] = True
+        if self.async_barrier["key"] == type:
+            self.async_barrier["ack"] = True
 
     # block on barrier for async channel
     def barrier(self, timeout=5, baseline=False):
 
         # set a random key
         key = random.getrandbits(32)
-        self.async_barrier = {'key': key, 'ack': False}
+        self.async_barrier = {"key": key, "ack": False}
 
         # expr time
         expr = time.time() + timeout
 
-        while not self.async_barrier['ack']:
+        while not self.async_barrier["ack"]:
 
             # inject
-            rc = self.stateless_client.transmit(
-                "publish_now", params={'key': key, 'baseline': baseline})
+            rc = self.stateless_client.transmit("publish_now", params={"key": key, "baseline": baseline})
             if not rc:
                 return rc
 
             # fast loop
-            for i in range(0, 100):
-                if self.async_barrier['ack']:
+            for _ in range(0, 100):
+                if self.async_barrier["ack"]:
                     break
                 time.sleep(0.001)
 
             if time.time() > expr:
-                return RC_ERR("*** [subscriber] - timeout "
-                              + "- no data flow from server at : " + self.tr)
-
-        return RC_OK()
+                raise TrexError("*** [subscriber] - timeout " + "- no data flow from server at : " + self.tr)
 
 
 # a class to measure util. of async subscriber thread
@@ -379,63 +369,61 @@ class AsyncUtil(object):
         self.clock = time.time()
 
         # reset the current interval
-        self.interval = {'ts': time.time(), 'total_sleep': 0, 'total_bits': 0}
+        self.interval = {"ts": time.time(), "total_sleep": 0, "total_bits": 0}
 
         # global counters
         self.cpu_util = 0
         self.bps = 0
 
     def on_recv_msg(self, message):
-        self.interval['total_bits'] += len(message) * 8.0
+        self.interval["total_bits"] += len(message) * 8.0
 
         self._tick()
 
     def __enter__(self):
-        assert(self.state == self.STATE_AWAKE)
+        assert self.state == self.STATE_AWAKE
         self.state = self.STATE_SLEEP
 
         self.sleep_start_ts = time.time()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        assert(self.state == self.STATE_SLEEP)
+        assert self.state == self.STATE_SLEEP
         self.state = self.STATE_AWAKE
 
         # measure total sleep time for interval
-        self.interval['total_sleep'] += time.time() - self.sleep_start_ts
+        self.interval["total_sleep"] += time.time() - self.sleep_start_ts
 
         self._tick()
 
     def _tick(self):
         # how much time did the current interval lasted
-        ts = time.time() - self.interval['ts']
+        ts = time.time() - self.interval["ts"]
         if ts < 1:
             return
 
         # if tick is in the middle of sleep - add the interval and reset
         if self.state == self.STATE_SLEEP:
-            self.interval['total_sleep'] += time.time() - self.sleep_start_ts
+            self.interval["total_sleep"] += time.time() - self.sleep_start_ts
             self.sleep_start_ts = time.time()
 
         # add the interval
-        if self.interval['total_sleep'] > 0:
+        if self.interval["total_sleep"] > 0:
             # calculate
-            self.cpu_util = self.cpu_util * 0.75 + \
-                (float(ts - self.interval['total_sleep']) / ts) * 0.25
-            self.interval['total_sleep'] = 0
+            self.cpu_util = self.cpu_util * 0.75 + (float(ts - self.interval["total_sleep"]) / ts) * 0.25
+            self.interval["total_sleep"] = 0
 
-        if self.interval['total_bits'] > 0:
+        if self.interval["total_bits"] > 0:
             # calculate
-            self.bps = self.bps * 0.75 + \
-                (self.interval['total_bits'] / ts) * 0.25
-            self.interval['total_bits'] = 0
+            self.bps = self.bps * 0.75 + (self.interval["total_bits"] / ts) * 0.25
+            self.interval["total_bits"] = 0
 
         # reset the interval's clock
-        self.interval['ts'] = time.time()
+        self.interval["ts"] = time.time()
 
     def get_cpu_util(self):
         self._tick()
-        return(self.cpu_util * 100)
+        return self.cpu_util * 100
 
     def get_bps(self):
         self._tick()
-        return(self.bps)
+        return self.bps

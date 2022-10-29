@@ -1,0 +1,6 @@
+server:
+  ip: IP
+  ports:
+    - 0
+    - 1
+    - ...

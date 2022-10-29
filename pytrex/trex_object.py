@@ -1,34 +1,35 @@
 """
-Base classes and utilities for all Xena Manager (Xena) objects.
-
-:author: yoram@ignissoft.com
+Base classes and utilities for all TRex objects.
 """
-from typing import Dict, Type, List
+from typing import Dict, List, Type, Union
 
 from trafficgenerator.tgn_object import TgnObject
 
-from .api.trex_stl_types import RC
-
 
 class TrexObject(TgnObject):
-    """ Base class for all Trex objects. """
+    """Base class for all Trex objects."""
 
-    def __init__(self, **data):
-        """ Create TRex object. """
-        if data['parent']:
-            self.username = data['parent'].username
-            self.session_id = data['parent'].session_id
-            self.server = data['parent'].server
-            if data['parent']._data.get('index') is not None:
-                data['objRef'] = f'{data["objType"]}/{data["parent"].index}'
-                if 'index' in data:
-                    data['objRef'] += f'{data["index"]}'
+    def __init__(self, parent: Union["TrexObject", None], **data):
+        """Create TRex object."""
+        if parent:
+            self.username = parent.username
+            self.session_id = parent.session_id
+            self.server = parent.server
+            if parent.index:
+                data["objRef"] = f'{data["objType"]}/{parent.index}'
+                if "index" in data:
+                    data["objRef"] += f'{data["index"]}'
             else:
-                data['objRef'] = f'{data["objType"]}/{data["index"]}'
-        super().__init__(**data)
+                data["objRef"] = f'{data["objType"]}/{data["index"]}'
+        super().__init__(parent, **data)
 
-    def transmit(self, method_name, params=None, api_class='core') -> RC:
-        return self.api.rpc.transmit(method_name, params, api_class)
+    def transmit(self, method_name: str, params: dict = None) -> dict:
+        """Transmit object command.
+
+        :param method_name: RPC command.
+        :param params: command parameters.
+        """
+        return self.api.rpc.transmit(method_name, params, "core")
 
     def transmit_batch(self, batch_list):
         return self.api.rpc.transmit_batch(batch_list)

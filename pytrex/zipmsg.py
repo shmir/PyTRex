@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-import zlib
 import struct
+import zlib
 
 
 class ZippedMsg:
@@ -15,8 +15,7 @@ class ZippedMsg:
     def compress(self, msg):
         # compress
         compressed = zlib.compress(msg)
-        new_msg = struct.pack(
-            ">II", self.MSG_COMPRESS_HEADER_MAGIC, len(msg)) + compressed
+        new_msg = struct.pack(">II", self.MSG_COMPRESS_HEADER_MAGIC, len(msg)) + compressed
         return new_msg
 
     def decompress(self, msg):
@@ -24,7 +23,7 @@ class ZippedMsg:
             return None
 
         t = struct.unpack(">II", msg[:8])
-        if(t[0] != self.MSG_COMPRESS_HEADER_MAGIC):
+        if t[0] != self.MSG_COMPRESS_HEADER_MAGIC:
             return None
 
         x = zlib.decompress(msg[8:])
@@ -38,7 +37,7 @@ class ZippedMsg:
             return False
 
         t = struct.unpack(">II", msg[:8])
-        if(t[0] != self.MSG_COMPRESS_HEADER_MAGIC):
+        if t[0] != self.MSG_COMPRESS_HEADER_MAGIC:
             return False
 
         return True

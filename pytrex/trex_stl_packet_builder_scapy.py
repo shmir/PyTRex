@@ -1,4 +1,3 @@
-
 import base64
 import copy
 import inspect
@@ -7,10 +6,10 @@ import os
 import random
 import socket
 import struct
-import yaml
 
-from scapy.layers.l2 import Ether
+import yaml
 from scapy.all import RawPcapReader, mac2str
+from scapy.layers.l2 import Ether
 from scapy.packet import NoPayload, Packet
 from scapy.utils import hexdump, wrpcap
 
@@ -29,6 +28,7 @@ class CTRexPacketBuildException(Exception):
 
     def __repr__(self):
         return "[errcode:%r] %r" % (self.code, self.message)
+
 
 # ###############################################################################################
 
@@ -51,12 +51,12 @@ def _buffer_to_num(str_buffer):
 
 
 def ipv4_str_to_num(ipv4_buffer):
-    assert len(ipv4_buffer) == 4, 'Size of ipv4_buffer is not 4'
+    assert len(ipv4_buffer) == 4, "Size of ipv4_buffer is not 4"
     return _buffer_to_num(ipv4_buffer)
 
 
 def mac_str_to_num(mac_buffer):
-    assert len(mac_buffer) == 6, 'Size of mac_buffer is not 6'
+    assert len(mac_buffer) == 6, "Size of mac_buffer is not 6"
     return _buffer_to_num(mac_buffer)
 
 
@@ -64,20 +64,20 @@ def int2mac(val):
     mac_arr = []
     for _ in range(6):
         val, char = divmod(val, 256)
-        mac_arr.insert(0, '%02x' % char)
-    return ':'.join(mac_arr)
+        mac_arr.insert(0, "%02x" % char)
+    return ":".join(mac_arr)
 
 
 def int2ip(val):
     ip_arr = []
     for _ in range(4):
         val, char = divmod(val, 256)
-        ip_arr.insert(0, '%s' % char)
-    return '.'.join(ip_arr)
+        ip_arr.insert(0, "%s" % char)
+    return ".".join(ip_arr)
 
 
 def increase_mac(mac_str, val=1):
-    if ':' in mac_str:
+    if ":" in mac_str:
         mac_str = mac2str(mac_str)
     mac_val = mac_str_to_num(mac_str)
     return int2mac((mac_val + val) % (1 << 48))
@@ -87,45 +87,44 @@ def increase_ip(ip_str, val=1):
     ip_val = ipv4_str_to_num(is_valid_ipv4_ret(ip_str))
     return int2ip((ip_val + val) % (1 << 32))
 
+
 # RFC 3513
 
 
-def generate_ipv6(mac_str, prefix='fe80'):
-    mac_arr = mac_str.split(':')
-    assert len(
-        mac_arr) == 6, 'mac should be in format of 11:22:33:44:55:66, got: %s' % mac_str
-    mac_arr[0] = '%x' % (int(mac_arr[0], 16) ^ 2)  # invert second bit
-    return '%s::%s%s:%sff:fe%s:%s%s' % tuple([prefix] + mac_arr[:3] + mac_arr[3:])
+def generate_ipv6(mac_str, prefix="fe80"):
+    mac_arr = mac_str.split(":")
+    assert len(mac_arr) == 6, "mac should be in format of 11:22:33:44:55:66, got: %s" % mac_str
+    mac_arr[0] = "%x" % (int(mac_arr[0], 16) ^ 2)  # invert second bit
+    return "%s::%s%s:%sff:fe%s:%s%s" % tuple([prefix] + mac_arr[:3] + mac_arr[3:])
+
 
 # RFC 4291
 
 
 def generate_ipv6_solicited_node(mac_str):
-    mac_arr = mac_str.split(':')
-    assert len(
-        mac_arr) == 6, 'mac should be in format of 11:22:33:44:55:66, got: %s' % mac_str
-    return 'ff02::1:ff%s:%s%s' % tuple(mac_arr[3:])
+    mac_arr = mac_str.split(":")
+    assert len(mac_arr) == 6, "mac should be in format of 11:22:33:44:55:66, got: %s" % mac_str
+    return "ff02::1:ff%s:%s%s" % tuple(mac_arr[3:])
 
 
 # return full ipv6 ff02::1 -> ff02:0:0:0:0:0:0:1
 def expand_ipv6(addr):
-    addr_arr = addr.split(':')
-    if addr.startswith(':'):
-        addr_arr[0] = '0'
-    if addr.endswith(':'):
-        addr_arr[-1] = '0'
+    addr_arr = addr.split(":")
+    if addr.startswith(":"):
+        addr_arr[0] = "0"
+    if addr.endswith(":"):
+        addr_arr[-1] = "0"
     for i, e in enumerate(addr_arr):
         if not e:
-            return ':'.join(addr_arr[:i] + ['0'] * (9 - len(addr_arr)) + addr_arr[i + 1:])
-    return ':'.join(addr_arr)
+            return ":".join(addr_arr[:i] + ["0"] * (9 - len(addr_arr)) + addr_arr[i + 1 :])
+    return ":".join(addr_arr)
 
 
 # return multicast mac based on ipv6 ff02::1 -> 33:33:00:00:00:01
 def multicast_mac_from_ipv6(addr):
     addr = expand_ipv6(addr)
-    addr_arr = addr.split(':')
-    return ('33:33:%02x:%02x:%02x:%02x' % (divmod(int(addr_arr[-2], 16), 256)
-                                           + divmod(int(addr_arr[-1], 16), 256)))
+    addr_arr = addr.split(":")
+    return "33:33:%02x:%02x:%02x:%02x" % (divmod(int(addr_arr[-2], 16), 256) + divmod(int(addr_arr[-1], 16), 256))
 
 
 def is_valid_ipv4_ret(ip_addr):
@@ -155,9 +154,9 @@ def is_valid_ipv6_ret(ipv6_addr):
     try:
         return socket.inet_pton(socket.AF_INET6, ipv6_addr)
     except AttributeError:  # no inet_pton here, sorry
-        raise CTRexPacketBuildException(-10, 'No inet_pton function available')
+        raise CTRexPacketBuildException(-10, "No inet_pton function available")
     except Exception:
-        raise CTRexPacketBuildException(-10, 'Not valid ipv6 format')
+        raise CTRexPacketBuildException(-10, "Not valid ipv6 format")
 
 
 class CTRexScriptsBase(object):
@@ -171,18 +170,14 @@ class CTRexScriptsBase(object):
 
 class CTRexScFieldRangeBase(CTRexScriptsBase):
 
-    FILED_TYPES = ['inc', 'dec', 'rand']
+    FILED_TYPES = ["inc", "dec", "rand"]
 
-    def __init__(self, field_name,
-                 field_type
-                 ):
+    def __init__(self, field_name, field_type):
         super(CTRexScFieldRangeBase, self).__init__()
         self.field_name = field_name
         self.field_type = field_type
         if self.field_type not in CTRexScFieldRangeBase.FILED_TYPES:
-            raise CTRexPacketBuildException(-12,
-                                            'Field type should be in %s'
-                                            % CTRexScFieldRangeBase.FILED_TYPES)
+            raise CTRexPacketBuildException(-12, "Field type should be in %s" % CTRexScFieldRangeBase.FILED_TYPES)
 
 
 class CTRexScFieldRangeValue(CTRexScFieldRangeBase):
@@ -190,20 +185,14 @@ class CTRexScFieldRangeValue(CTRexScFieldRangeBase):
     Range of field values
     """
 
-    def __init__(self, field_name,
-                 field_type,
-                 min_value,
-                 max_value
-                 ):
+    def __init__(self, field_name, field_type, min_value, max_value):
         super(CTRexScFieldRangeValue, self).__init__(field_name, field_type)
         self.min_value = min_value
         self.max_value = max_value
         if min_value > max_value:
-            raise CTRexPacketBuildException(-12,
-                                            'Invalid range: min is greater than max.')
+            raise CTRexPacketBuildException(-12, "Invalid range: min is greater than max.")
         if min_value == max_value:
-            raise CTRexPacketBuildException(-13,
-                                            "Invalid range: min value is equal to max value.")
+            raise CTRexPacketBuildException(-13, "Invalid range: min value is equal to max value.")
 
 
 class CTRexScIpv4SimpleRange(CTRexScFieldRangeBase):
@@ -218,26 +207,24 @@ class CTRexScIpv4SimpleRange(CTRexScFieldRangeBase):
         mmin = ipv4_str_to_num(is_valid_ipv4_ret(min_ip))
         mmax = ipv4_str_to_num(is_valid_ipv4_ret(max_ip))
         if mmin > mmax:
-            raise CTRexPacketBuildException(
-                -11, 'CTRexScIpv4SimpleRange m_min ip is bigger than max')
+            raise CTRexPacketBuildException(-11, "CTRexScIpv4SimpleRange m_min ip is bigger than max")
 
 
 class CTRexScIpv4TupleGen(CTRexScriptsBase):
     """
     Range tuple
     """
+
     FLAGS_ULIMIT_FLOWS = 1
 
-    def __init__(self, min_ipv4, max_ipv4, num_flows=100000, min_port=1025,
-                 max_port=65535, flags=0):
+    def __init__(self, min_ipv4, max_ipv4, num_flows=100000, min_port=1025, max_port=65535, flags=0):
         super(CTRexScIpv4TupleGen, self).__init__()
         self.min_ip = min_ipv4
         self.max_ip = max_ipv4
         mmin = ipv4_str_to_num(is_valid_ipv4_ret(min_ipv4))
         mmax = ipv4_str_to_num(is_valid_ipv4_ret(max_ipv4))
         if mmin > mmax:
-            raise CTRexPacketBuildException(
-                -11, 'CTRexScIpv4SimpleRange m_min ip is bigger than max')
+            raise CTRexPacketBuildException(-11, "CTRexScIpv4SimpleRange m_min ip is bigger than max")
 
         self.num_flows = num_flows
 
@@ -258,12 +245,10 @@ class CTRexScTrimPacketSize(CTRexScriptsBase):
         self.max_pkt_size = max_pkt_size
         if max_pkt_size is not None and min_pkt_size is not None:
             if min_pkt_size == max_pkt_size:
-                raise CTRexPacketBuildException(
-                    -11, 'CTRexScTrimPacketSize min_pkt_size is the same as max_pkt_size ')
+                raise CTRexPacketBuildException(-11, "CTRexScTrimPacketSize min_pkt_size is the same as max_pkt_size ")
 
             if min_pkt_size > max_pkt_size:
-                raise CTRexPacketBuildException(
-                    -11, 'CTRexScTrimPacketSize min_pkt_size is bigger than max_pkt_size ')
+                raise CTRexPacketBuildException(-11, "CTRexScTrimPacketSize min_pkt_size is bigger than max_pkt_size ")
 
 
 class STLScVmRaw(CTRexScriptsBase):
@@ -332,6 +317,7 @@ class STLScVmRaw(CTRexScriptsBase):
 # VM raw instructions
 ################################################################################################
 
+
 class CTRexVmInsBase(object):
     """
     Instruction base
@@ -361,7 +347,7 @@ class CTRexVmInsFixHwCs(CTRexVmInsBase):
 class CTRexVmInsFlowVar(CTRexVmInsBase):
     # TBD add more validation tests
 
-    OPERATIONS = ['inc', 'dec', 'random']
+    OPERATIONS = ["inc", "dec", "random"]
     VALID_SIZES = [1, 2, 4, 8]
 
     def __init__(self, fv_name, size, op, init_value, min_value, max_value, step):
@@ -370,13 +356,13 @@ class CTRexVmInsFlowVar(CTRexVmInsBase):
         self.size = size
         self.op = op
         self.init_value = init_value
-        assert init_value >= 0, 'init_value(%s) is negative' % init_value
+        assert init_value >= 0, "init_value(%s) is negative" % init_value
         self.min_value = min_value
-        assert min_value >= 0, 'min_value(%s) is negative' % min_value
+        assert min_value >= 0, "min_value(%s) is negative" % min_value
         self.max_value = max_value
-        assert max_value >= 0, 'max_value(%s) is negative' % max_value
+        assert max_value >= 0, "max_value(%s) is negative" % max_value
         self.step = step
-        assert step >= 0, 'step(%s) is negative' % step
+        assert step >= 0, "step(%s) is negative" % step
 
 
 class CTRexVmInsFlowVarRandLimit(CTRexVmInsBase):
@@ -389,12 +375,12 @@ class CTRexVmInsFlowVarRandLimit(CTRexVmInsBase):
         self.name = fv_name
         self.size = size
         self.limit = limit
-        assert limit >= 0, 'limit(%s) is negative' % limit
+        assert limit >= 0, "limit(%s) is negative" % limit
         self.seed = seed
         self.min_value = min_value
-        assert min_value >= 0, 'min_value(%s) is negative' % min_value
+        assert min_value >= 0, "min_value(%s) is negative" % min_value
         self.max_value = max_value
-        assert max_value >= 0, 'max_value(%s) is negative' % max_value
+        assert max_value >= 0, "max_value(%s) is negative" % max_value
 
 
 class CTRexVmInsWrFlowVar(CTRexVmInsBase):
@@ -407,8 +393,7 @@ class CTRexVmInsWrFlowVar(CTRexVmInsBase):
 
 
 class CTRexVmInsWrMaskFlowVar(CTRexVmInsBase):
-    def __init__(self, fv_name, pkt_offset, pkt_cast_size, mask, shift,
-                 add_value, is_big_endian=True):
+    def __init__(self, fv_name, pkt_offset, pkt_cast_size, mask, shift, add_value, is_big_endian=True):
         super(CTRexVmInsWrMaskFlowVar, self).__init__("write_mask_flow_var")
         self.name = fv_name
         self.pkt_offset = pkt_offset
@@ -440,14 +425,13 @@ class CTRexVmInsTupleGen(CTRexVmInsBase):
 # ###############################################################################################
 #
 class CTRexVmEngine(object):
-
     def __init__(self):
         """
         Inlcude list of instructions.
         """
         super(CTRexVmEngine, self).__init__()
         self.ins = []
-        self.split_by_var = ''
+        self.split_by_var = ""
         self.cache_size = 0
 
     # return as json
@@ -458,9 +442,9 @@ class CTRexVmEngine(object):
         for obj in self.ins:
             inst_array.append(obj.__dict__)
 
-        d = {'instructions': inst_array, 'split_by_var': self.split_by_var}
+        d = {"instructions": inst_array, "split_by_var": self.split_by_var}
         if self.cache_size > 0:
-            d['cache'] = self.cache_size
+            d["cache"] = self.cache_size
         return d
 
     def add_ins(self, ins):
@@ -483,8 +467,8 @@ class CTRexVmEngine(object):
 
 # ###############################################################################################
 
-class CTRexScapyPktUtl(object):
 
+class CTRexScapyPktUtl(object):
     def __init__(self, scapy_pkt):
         self.pkt = scapy_pkt
 
@@ -516,12 +500,11 @@ class CTRexScapyPktUtl(object):
         for pkt in self.pkt_iter():
             if name in (pkt.name, pkt.__class__.__name__):
                 if cnt == 0:
-                    return(pkt, pkt._offset)
+                    return (pkt, pkt._offset)
                 else:
                     cnt = cnt - 1
 
-        raise CTRexPacketBuildException(-11,
-                                        ("no layer %s-%d" % (name, save_cnt)))
+        raise CTRexPacketBuildException(-11, ("no layer %s-%d" % (name, save_cnt)))
 
     def layer_offset(self, name, cnt=0):
         """
@@ -535,8 +518,7 @@ class CTRexScapyPktUtl(object):
                 else:
                     cnt = cnt - 1
 
-        raise CTRexPacketBuildException(-11,
-                                        ("no layer %s-%d" % (name, save_cnt)))
+        raise CTRexPacketBuildException(-11, ("no layer %s-%d" % (name, save_cnt)))
 
     def get_field_offet(self, layer, layer_cnt, field_name):
         """
@@ -549,20 +531,19 @@ class CTRexScapyPktUtl(object):
 
         for f in layer_pkt.fields_desc:
             if f.name == field_name:
-                return(l_offset+f._offset, f.get_size_bytes())
+                return (l_offset + f._offset, f.get_size_bytes())
 
-        raise CTRexPacketBuildException(-11, "No layer %s-%d." %
-                                        (field_name, layer_cnt))
+        raise CTRexPacketBuildException(-11, "No layer %s-%d." % (field_name, layer_cnt))
 
     def get_layer_offet_by_str(self, layer_des):
         """
-        Return layer offset by string.
+         Return layer offset by string.
 
-       :parameters:
+        :parameters:
 
-        IP:0
-        IP:1
-        return offset
+         IP:0
+         IP:1
+         return offset
 
 
         """
@@ -594,8 +575,7 @@ class CTRexScapyPktUtl(object):
 
         s = field_des.split(".")
         if len(s) != 2:
-            raise CTRexPacketBuildException(
-                -11, ("Field desription should be layer:cnt.field Example: IP.src or IP:1.src"))
+            raise CTRexPacketBuildException(-11, ("Field desription should be layer:cnt.field Example: IP.src or IP:1.src"))
 
         layer_ex = s[0].replace("|", ".")
         field = s[1]
@@ -621,6 +601,7 @@ class CTRexScapyPktUtl(object):
     def has_UDP(self):
         return self.pkt.has_layer("UDP")
 
+
 ################################################################################################
 
 
@@ -645,43 +626,36 @@ class CTRexVmDescBase(object):
         print((yaml.dump(self.get_json(), default_flow_style=False)))
 
     def get_var_ref(self):
-        '''
-          Virtual function returns a ref var name.
-        '''
+        """
+        Virtual function returns a ref var name.
+        """
         return None
 
     def get_var_name(self):
-        '''
-          Virtual function returns the varible name if it exists.
-        '''
+        """
+        Virtual function returns the varible name if it exists.
+        """
         return None
 
     def compile(self, parent):
-        '''
-          Virtual function to take parent that has function name_to_offset.
-        '''
+        """
+        Virtual function to take parent that has function name_to_offset.
+        """
         pass
 
 
 def valid_fv_size(size):
-    if not(size in CTRexVmInsFlowVar.VALID_SIZES):
-        raise CTRexPacketBuildException(-11,
-                                        ("Flow var has invalid size %d ") % size)
+    if not (size in CTRexVmInsFlowVar.VALID_SIZES):
+        raise CTRexPacketBuildException(-11, ("Flow var has invalid size %d ") % size)
 
 
 def valid_fv_ops(op):
-    if not(op in CTRexVmInsFlowVar.OPERATIONS):
-        raise CTRexPacketBuildException(-11,
-                                        ("Flow var has invalid op %s ") % op)
+    if not (op in CTRexVmInsFlowVar.OPERATIONS):
+        raise CTRexPacketBuildException(-11, ("Flow var has invalid op %s ") % op)
 
 
 def get_max_by_size(size):
-    d = {
-        1: ((1 << 8) - 1),
-        2: ((1 << 16)-1),
-        4: ((1 << 32)-1),
-        8: 0xffffffffffffffff
-    }
+    d = {1: ((1 << 8) - 1), 2: ((1 << 16) - 1), 4: ((1 << 32) - 1), 8: 0xFFFFFFFFFFFFFFFF}
     return d[size]
 
 
@@ -694,7 +668,6 @@ def convert_val(val):
 
 
 class STLVmFlowVar(CTRexVmDescBase):
-
     def __init__(self, name, init_value=None, min_value=0, max_value=255, size=4, step=1, op="inc"):
         """
         Flow variable instruction. Allocates a variable on a stream context.
@@ -770,20 +743,17 @@ class STLVmFlowVar(CTRexVmDescBase):
         self.step = convert_val(step)
 
         if self.min_value > self.max_value:
-            raise CTRexPacketBuildException(
-                -11, ("max %d is lower than min %d ") % (self.max_value, self.min_value))
+            raise CTRexPacketBuildException(-11, ("max %d is lower than min %d ") % (self.max_value, self.min_value))
 
     def get_obj(self):
-        return CTRexVmInsFlowVar(self.name, self.size, self.op, self.init_value,
-                                 self.min_value, self.max_value, self.step)
+        return CTRexVmInsFlowVar(self.name, self.size, self.op, self.init_value, self.min_value, self.max_value, self.step)
 
     def get_var_name(self):
         return [self.name]
 
 
 class STLVmFlowVarRepeatableRandom(CTRexVmDescBase):
-
-    def __init__(self, name,  size=4, limit=100, seed=None, min_value=0, max_value=None):
+    def __init__(self, name, size=4, limit=100, seed=None, min_value=0, max_value=None):
         """
         Flow variable instruction for repeatable random with limit number of generating numbers.
         Allocates memory on a stream context.
@@ -846,26 +816,21 @@ class STLVmFlowVarRepeatableRandom(CTRexVmDescBase):
             self.max_value = convert_val(max_value)
 
         if self.min_value > self.max_value:
-            raise CTRexPacketBuildException(
-                -11, ("max %d is lower than min %d ") % (self.max_value, self.min_value))
+            raise CTRexPacketBuildException(-11, ("max %d is lower than min %d ") % (self.max_value, self.min_value))
 
     def get_obj(self):
-        return CTRexVmInsFlowVarRandLimit(self.name, self.size, self.limit, self.seed,
-                                          self.min_value, self.max_value)
+        return CTRexVmInsFlowVarRandLimit(self.name, self.size, self.limit, self.seed, self.min_value, self.max_value)
 
     def get_var_name(self):
         return [self.name]
 
 
 class STLVmFlowVarRepetableRandom(STLVmFlowVarRepeatableRandom):
-
-    def __init__(self, name,  size=4, limit=100, seed=None, min_value=0, max_value=None):
-        super(STLVmFlowVarRepetableRandom, self).__init__(
-            name,  size, limit, seed, min_value, max_value)
+    def __init__(self, name, size=4, limit=100, seed=None, min_value=0, max_value=None):
+        super(STLVmFlowVarRepetableRandom, self).__init__(name, size, limit, seed, min_value, max_value)
 
     def get_obj(self):
-        return CTRexVmInsFlowVarRandLimit(self.name, self.size, self.limit, self.seed,
-                                          self.min_value, self.max_value)
+        return CTRexVmInsFlowVarRandLimit(self.name, self.size, self.limit, self.seed, self.min_value, self.max_value)
 
     def get_var_name(self):
         return [self.name]
@@ -934,8 +899,7 @@ class STLVmFixChecksumHw(CTRexVmDescBase):
         if type(self.l4_offset) == str:
             self.l4_offset = parent._pkt_layer_offset(self.l4_offset)
 
-        assert self.l4_offset >= self.l2_len + \
-            8, 'l4_offset should be higher than l3_offset offset'
+        assert self.l4_offset >= self.l2_len + 8, "l4_offset should be higher than l3_offset offset"
         self.l3_len = self.l4_offset - self.l2_len
 
 
@@ -1038,8 +1002,7 @@ class STLVmWrFlowVar(CTRexVmDescBase):
         return self.name
 
     def get_obj(self):
-        return CTRexVmInsWrFlowVar(self.name, self.pkt_offset+self.offset_fixup,
-                                   self.add_val, self.is_big)
+        return CTRexVmInsWrFlowVar(self.name, self.pkt_offset + self.offset_fixup, self.add_val, self.is_big)
 
     def compile(self, parent):
         if type(self.pkt_offset) == str:
@@ -1048,8 +1011,7 @@ class STLVmWrFlowVar(CTRexVmDescBase):
 
 
 class STLVmWrMaskFlowVar(CTRexVmDescBase):
-    def __init__(self, fv_name, pkt_offset, pkt_cast_size=1, mask=0xff,
-                 shift=0, add_value=0, offset_fixup=0, is_big=True):
+    def __init__(self, fv_name, pkt_offset, pkt_cast_size=1, mask=0xFF, shift=0, add_value=0, offset_fixup=0, is_big=True):
         """
         Write a stream variable into a packet field with some operations.
         Using this instruction, the variable size and the field can have different sizes.
@@ -1160,7 +1122,7 @@ class STLVmWrMaskFlowVar(CTRexVmDescBase):
         self.offset_fixup = offset_fixup
         self.pkt_offset = pkt_offset
         self.pkt_cast_size = pkt_cast_size
-        if not(pkt_cast_size in [1, 2, 4]):
+        if not (pkt_cast_size in [1, 2, 4]):
             raise CTRexPacketBuildException(-10, "not valid cast size")
 
         self.mask = mask
@@ -1173,9 +1135,15 @@ class STLVmWrMaskFlowVar(CTRexVmDescBase):
         return self.name
 
     def get_obj(self):
-        return CTRexVmInsWrMaskFlowVar(self.name, self.pkt_offset+self.offset_fixup,
-                                       self.pkt_cast_size, self.mask, self.shift,
-                                       self.add_value, self.is_big)
+        return CTRexVmInsWrMaskFlowVar(
+            self.name,
+            self.pkt_offset + self.offset_fixup,
+            self.pkt_cast_size,
+            self.mask,
+            self.shift,
+            self.add_value,
+            self.is_big,
+        )
 
     def compile(self, parent):
         if type(self.pkt_offset) == str:
@@ -1186,53 +1154,53 @@ class STLVmWrMaskFlowVar(CTRexVmDescBase):
 class STLVmTrimPktSize(CTRexVmDescBase):
     def __init__(self, fv_name):
         """
-            Trim the packet size by the stream variable size. This instruction only
-            changes the total packet size, and does not repair the fields to match the new size.
+        Trim the packet size by the stream variable size. This instruction only
+        changes the total packet size, and does not repair the fields to match the new size.
 
 
-            :parameters:
-                fv_name : string
-                    Stream variable name. The value of this variable is the new total packet size.
+        :parameters:
+            fv_name : string
+                Stream variable name. The value of this variable is the new total packet size.
 
 
-            For Example::
+        For Example::
 
-                def create_stream(self):
-                    # pkt
-                    p_l2  = Ether();
-                    p_l3  = IP(src="16.0.0.1",dst="48.0.0.1")
-                    p_l4  = UDP(dport=12,sport=1025)
-                    pyld_size = max(0, self.max_pkt_size_l3 - len(p_l3/p_l4));
-                    base_pkt = p_l2/p_l3/p_l4/('\x55'*(pyld_size))
+            def create_stream(self):
+                # pkt
+                p_l2  = Ether();
+                p_l3  = IP(src="16.0.0.1",dst="48.0.0.1")
+                p_l4  = UDP(dport=12,sport=1025)
+                pyld_size = max(0, self.max_pkt_size_l3 - len(p_l3/p_l4));
+                base_pkt = p_l2/p_l3/p_l4/('\x55'*(pyld_size))
 
-                    l3_len_fix =-(len(p_l2));
-                    l4_len_fix =-(len(p_l2/p_l3));
+                l3_len_fix =-(len(p_l2));
+                l4_len_fix =-(len(p_l2/p_l3));
 
 
-                    # vm
-                    vm = STLScVmRaw( [ STLVmFlowVar(name="fv_rand", min_value=64,
-                                                    max_value=len(base_pkt),
-                                                    size=2, op="inc"),
-                                       # change total packet size <<<
-                                       STLVmTrimPktSize("fv_rand"),
+                # vm
+                vm = STLScVmRaw( [ STLVmFlowVar(name="fv_rand", min_value=64,
+                                                max_value=len(base_pkt),
+                                                size=2, op="inc"),
+                                   # change total packet size <<<
+                                   STLVmTrimPktSize("fv_rand"),
 
-                                       STLVmWrFlowVar(fv_name="fv_rand",
-                                                      pkt_offset= "IP.len",
-                                                      add_val=l3_len_fix), # fix ip len
-                                       # fix checksum
-                                       STLVmFixIpv4(offset = "IP"),
+                                   STLVmWrFlowVar(fv_name="fv_rand",
+                                                  pkt_offset= "IP.len",
+                                                  add_val=l3_len_fix), # fix ip len
+                                   # fix checksum
+                                   STLVmFixIpv4(offset = "IP"),
 
-                                       STLVmWrFlowVar(fv_name="fv_rand",
-                                                      pkt_offset= "UDP.len",
-                                                      add_val=l4_len_fix) # fix udp len
-                                      ]
-                                   )
+                                   STLVmWrFlowVar(fv_name="fv_rand",
+                                                  pkt_offset= "UDP.len",
+                                                  add_val=l4_len_fix) # fix udp len
+                                  ]
+                               )
 
-                    pkt = STLPktBuilder(pkt = base_pkt,
-                                        vm = vm)
+                pkt = STLPktBuilder(pkt = base_pkt,
+                                    vm = vm)
 
-                    return STLStream(packet = pkt,
-                                     mode = STLTXCont())
+                return STLStream(packet = pkt,
+                                 mode = STLTXCont())
 
 
         """
@@ -1248,8 +1216,7 @@ class STLVmTrimPktSize(CTRexVmDescBase):
 
 
 class STLVmTupleGen(CTRexVmDescBase):
-    def __init__(self, name, ip_min="0.0.0.1", ip_max="0.0.0.10", port_min=1025,
-                 port_max=65535, limit_flows=100000, flags=0):
+    def __init__(self, name, ip_min="0.0.0.1", ip_max="0.0.0.10", port_min=1025, port_max=65535, limit_flows=100000, flags=0):
         """
         Generate a struct with two variables: ``var_name.ip`` as uint32_t
         and ``var_name.port`` as uint16_t
@@ -1370,19 +1337,20 @@ class STLVmTupleGen(CTRexVmDescBase):
         self.flags = flags
 
     def get_var_name(self):
-        return [self.name+".ip", self.name+".port"]
+        return [self.name + ".ip", self.name + ".port"]
 
     def get_obj(self):
-        return CTRexVmInsTupleGen(self.name, self.ip_min, self.ip_max, self.port_min,
-                                  self.port_max, self.limit_flows, self.flags)
+        return CTRexVmInsTupleGen(
+            self.name, self.ip_min, self.ip_max, self.port_min, self.port_max, self.limit_flows, self.flags
+        )
 
 
 # ###############################################################################################
 
+
 class STLPktBuilder:
     # WTF
-    def __init__(self, pkt=None, pkt_buffer=None, vm=None, path_relative_to_profile=False,
-                 build_raw=False, remove_fcs=True):
+    def __init__(self, pkt=None, pkt_buffer=None, vm=None, path_relative_to_profile=False, build_raw=False, remove_fcs=True):
         """
 
         This class defines a method for building a template packet and
@@ -1455,7 +1423,7 @@ class STLPktBuilder:
         """
         super(STLPktBuilder, self).__init__()
 
-        self.pkt = None     # as input
+        self.pkt = None  # as input
         self.pkt_raw = None  # from raw pcap file
         self.vm_scripts = []  # list of high level instructions
         self.vm_low_level = None
@@ -1466,8 +1434,7 @@ class STLPktBuilder:
         self.is_binary_source = pkt_buffer is not None
 
         if pkt is not None and pkt_buffer is not None:
-            raise CTRexPacketBuildException(
-                -15, "Packet builder cannot be provided with both pkt and pkt_buffer.")
+            raise CTRexPacketBuildException(-15, "Packet builder cannot be provided with both pkt and pkt_buffer.")
 
         # process packet
         if pkt is not None:
@@ -1479,11 +1446,9 @@ class STLPktBuilder:
         # process VM
         if vm is not None:
             if not isinstance(vm, (STLScVmRaw, list)):
-                raise CTRexPacketBuildException(-14,
-                                                "Bad value for variable vm.")
+                raise CTRexPacketBuildException(-14, "Bad value for variable vm.")
 
-            self.add_command(vm if isinstance(
-                vm, STLScVmRaw) else STLScVmRaw(vm))
+            self.add_command(vm if isinstance(vm, STLScVmRaw) else STLScVmRaw(vm))
 
         # raw source build to see MAC presence/ fields offset by name in VM
         if build_raw and self.pkt_raw and not self.pkt:
@@ -1510,7 +1475,7 @@ class STLPktBuilder:
             + :exc:`AssertionError`, in case VM is not compiled(is None).
         """
 
-        assert self.vm_low_level is not None, 'vm_low_level is None, please use compile()'
+        assert self.vm_low_level is not None, "vm_low_level is None, please use compile()"
 
         return self.vm_low_level.get_json()
 
@@ -1532,8 +1497,7 @@ class STLPktBuilder:
 
         """
         pkt_buf = self._get_pkt_as_str()
-        return {'binary': base64.b64encode(pkt_buf).decode() if encode else pkt_buf,
-                'meta': self.metadata}
+        return {"binary": base64.b64encode(pkt_buf).decode() if encode else pkt_buf, "meta": self.metadata}
 
     def dump_pkt_to_pcap(self, file_path):
         wrpcap(file_path, self._get_pkt_as_str())
@@ -1586,8 +1550,7 @@ class STLPktBuilder:
             self.pkt_raw = pkt[0]
             break
         if not was_set:
-            raise CTRexPacketBuildException(-14,
-                                            "Empty pcap file {0}".format(f_path))
+            raise CTRexPacketBuildException(-14, "Empty pcap file {0}".format(f_path))
 
     def to_pkt_dump(self):
         p = self.pkt
@@ -1624,7 +1587,7 @@ class STLPktBuilder:
         p = self.pkt
         if isinstance(p, Packet):
             if isinstance(p, Ether):
-                if 'src' in p.fields:
+                if "src" in p.fields:
                     return False
         return True
 
@@ -1634,7 +1597,7 @@ class STLPktBuilder:
         p = self.pkt
         if isinstance(p, Packet):
             if isinstance(p, Ether):
-                if 'dst' in p.fields:
+                if "dst" in p.fields:
                     return False
         return True
 
@@ -1668,15 +1631,14 @@ class STLPktBuilder:
             if self.path_relative_to_profile:
                 p = self._get_path_relative_to_profile()  # loader
                 if p:
-                    f_path = os.path.abspath(os.path.join(
-                        os.path.dirname(p), pcap_file_name))
+                    f_path = os.path.abspath(os.path.join(os.path.dirname(p), pcap_file_name))
 
         return f_path
 
     def _get_path_relative_to_profile(self):
         p = inspect.stack()
         for obj in p:
-            if obj[3] == 'get_streams':
+            if obj[3] == "get_streams":
                 return obj[1]
         return None
 
@@ -1692,8 +1654,7 @@ class STLPktBuilder:
             if var_names:
                 for var_name in var_names:
                     if var_name in vars:
-                        raise CTRexPacketBuildException(
-                            -11, ("Variable %s defined twice ") % (var_name))
+                        raise CTRexPacketBuildException(-11, ("Variable %s defined twice ") % (var_name))
                     else:
                         vars[var_name] = 1
 
@@ -1702,8 +1663,7 @@ class STLPktBuilder:
             var_name = desc.get_var_ref()
             if var_name:
                 if var_name not in vars:
-                    raise CTRexPacketBuildException(
-                        -11, ("Variable %s does not exist  ") % (var_name))
+                    raise CTRexPacketBuildException(-11, ("Variable %s does not exist  ") % (var_name))
             desc.compile(self)
 
         for desc in obj.commands:
@@ -1732,9 +1692,9 @@ class STLPktBuilder:
         # regular scapy packet
         elif not self.pkt:
             # should not reach here
-            raise CTRexPacketBuildException(-11, 'Empty packet')
+            raise CTRexPacketBuildException(-11, "Empty packet")
 
-        if self.remove_fcs and self.pkt.lastlayer().name == 'Padding':
+        if self.remove_fcs and self.pkt.lastlayer().name == "Padding":
             self.pkt.lastlayer().underlayer.remove_payload()
 
         self.pkt.build()
@@ -1762,33 +1722,27 @@ class STLPktBuilder:
         if self.pkt_raw:
             return self.pkt_raw
 
-        raise CTRexPacketBuildException(-11, 'Empty packet')
+        raise CTRexPacketBuildException(-11, "Empty packet")
 
     def _add_tuple_gen(self, tuple_gen):
 
         pass
 
 
-def STLIPRange(src=None,
-               dst=None,
-               fix_chksum=True):
+def STLIPRange(src=None, dst=None, fix_chksum=True):
 
     vm = []
 
     if src:
         vm += [
-            STLVmFlowVar(
-                name="src", min_value=src['start'], max_value=src['end'],
-                size=4, op="inc", step=src['step']),
-            STLVmWrFlowVar(fv_name="src", pkt_offset="IP.src")
+            STLVmFlowVar(name="src", min_value=src["start"], max_value=src["end"], size=4, op="inc", step=src["step"]),
+            STLVmWrFlowVar(fv_name="src", pkt_offset="IP.src"),
         ]
 
     if dst:
         vm += [
-            STLVmFlowVar(
-                name="dst", min_value=dst['start'], max_value=dst['end'],
-                size=4, op="inc", step=dst['step']),
-            STLVmWrFlowVar(fv_name="dst", pkt_offset="IP.dst")
+            STLVmFlowVar(name="dst", min_value=dst["start"], max_value=dst["end"], size=4, op="inc", step=dst["step"]),
+            STLVmWrFlowVar(fv_name="dst", pkt_offset="IP.dst"),
         ]
 
     if fix_chksum:
@@ -1798,12 +1752,12 @@ def STLIPRange(src=None,
 
 
 class STLVM(STLScVmRaw):
-    '''
-        Defines a VM/Field Engine object
+    """
+    Defines a VM/Field Engine object
 
-        Describes the interaction on each packet
+    Describes the interaction on each packet
 
-    '''
+    """
 
     def __init__(self):
         STLScVmRaw.__init__(self)
@@ -1842,10 +1796,9 @@ class STLVM(STLScVmRaw):
              op    : string
                 Possible values: "inc", "dec", "random"
         """
-        self.add_cmd(STLVmFlowVar(name=name, min_value=min_value,
-                                  max_value=max_value, size=size, op=op, step=step))
+        self.add_cmd(STLVmFlowVar(name=name, min_value=min_value, max_value=max_value, size=size, op=op, step=step))
 
-    def write(self, fv_name, pkt_offset, offset_fixup=0, add_val=0, byte_order='big'):
+    def write(self, fv_name, pkt_offset, offset_fixup=0, add_val=0, byte_order="big"):
         """
         Write a previously defined varaible to the packet.
 
@@ -1875,11 +1828,15 @@ class STLVM(STLScVmRaw):
              is_big      : bool
                 How to write the variable to the the packet. True=big-endian, False=little-endian
         """
-        self.add_cmd(STLVmWrFlowVar(fv_name=fv_name,
-                                    pkt_offset=pkt_offset,
-                                    offset_fixup=offset_fixup,
-                                    add_val=add_val,
-                                    is_big=(byte_order == 'big')))
+        self.add_cmd(
+            STLVmWrFlowVar(
+                fv_name=fv_name,
+                pkt_offset=pkt_offset,
+                offset_fixup=offset_fixup,
+                add_val=add_val,
+                is_big=(byte_order == "big"),
+            )
+        )
 
     def tuple_var(self, name, ip_min, ip_max, port_min, port_max, limit_flows=0):
         """
@@ -1946,12 +1903,11 @@ class STLVM(STLScVmRaw):
 
         """
 
-        self.add_cmd(STLVmTupleGen(name=name,
-                                   ip_min=ip_min,
-                                   ip_max=ip_max,
-                                   port_min=port_min,
-                                   port_max=port_max,
-                                   limit_flows=limit_flows))
+        self.add_cmd(
+            STLVmTupleGen(
+                name=name, ip_min=ip_min, ip_max=ip_max, port_min=port_min, port_max=port_max, limit_flows=limit_flows
+            )
+        )
 
     def fix_chksum(self, offset="IP"):
         """
@@ -1981,7 +1937,7 @@ class STLVM(STLScVmRaw):
 
 
 class PacketBuffer:
-    '''
+    """
     Class to be used when sending packets via push_packets.
 
     :parameters:
@@ -1993,7 +1949,7 @@ class PacketBuffer:
 
         port_dst : bool
             Override dst MAC with TRex port dst
-    '''
+    """
 
     def __init__(self, buffer, port_src=False, port_dst=False):
         if isinstance(buffer, dict):
