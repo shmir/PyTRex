@@ -1,11 +1,6 @@
 """
 Classes and utilities that represents TRex port.
-
-:author: yoram@ignissoft.com
 """
-
-from __future__ import annotations
-
 import re
 import time
 from copy import deepcopy
@@ -199,7 +194,6 @@ class TrexPort(TrexObject):
 
     def write_streams(self) -> None:
         """Write all streams to server."""
-
         self.transmit("remove_all_streams")
         batch = []
         for name, stream in self.streams.items():
@@ -224,7 +218,7 @@ class TrexPort(TrexObject):
         return PortState[rc["result"]["state"].upper()]
 
     def is_transmitting(self) -> bool:
-        """True - port is transmitting, False - port is not transmitting."""
+        """Return True if port is transmitting, else return False."""
         return self.get_port_state() in [PortState.TX, PortState.PCAP_TX]
 
     def start_transmit(self, blocking: Optional[bool] = False) -> None:
@@ -309,7 +303,7 @@ class TrexPort(TrexObject):
         rx: Optional[bool] = True,
         tx: Optional[bool] = False,
         limit: Optional[int] = 1000,
-        mode: Optional[TrexCaptureMode] = TrexCaptureMode.fixed,
+        mode: Optional[TrexCaptureMode] = TrexCaptureMode.FIXED,
         bpf_filter: Optional[str] = "",
     ) -> None:
         """Start capture.
@@ -320,23 +314,18 @@ class TrexPort(TrexObject):
         :param mode: when full, if fixed drop new packets, else (cyclic) drop old packets.
         :param bpf_filter:  A Berkeley Packet Filter pattern. Only packets matching the filter will be captured.
         """
-
         self.clear_capture(rx=rx, tx=tx)
         self.set_service_mode(enabled=True)
-        capture = self.get_object_by_type("capture")
-        if not self.get_object_by_type("capture"):
-            capture = TrexCapture(self)
-        capture.start(rx, tx, limit, mode, bpf_filter)
+        self.capture.start(rx, tx, limit, mode, bpf_filter)
 
     def stop_capture(self, limit: Optional[int] = 1000, output: Optional[str] = None) -> List[Dict]:
-        """Stop catture.
+        """Stop capture.
 
         :param limit: limit the number of packets that will be read from the capture buffer.
         :param output: full path to file where capture packets will be stored, if None - do not store packets in file.
             You can run text2pcap on the resulted file and then open it with wireshark.
         """
-        capture = self.get_object_by_type("capture")
-        return capture.stop_capture(limit, output)
+        return self.capture.stop(limit, output)
 
     #
     # Low level.
@@ -358,9 +347,12 @@ class TrexPort(TrexObject):
     #
 
     @property
-    def streams(self) -> Dict[str, TrexPort]:
+    def streams(self) -> Dict[str, "TrexPort"]:
         return {s.name: s for s in self.get_objects_by_type("stream")}
 
     @property
     def capture(self) -> TrexCapture:
+        """Return TrexCapture object for the port."""
+        if not self.get_object_by_type("capture"):
+            TrexCapture(self)
         return self.get_object_by_type("capture")

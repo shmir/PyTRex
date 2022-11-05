@@ -174,7 +174,7 @@ class TrexServer(TrexObject):
             port.clear_capture(rx=True, tx=True)
 
     def start_capture(
-        self, limit: int = 1000, mode: TrexCaptureMode = TrexCaptureMode.fixed, bpf_filter: str = "", *ports: TrexPort
+        self, limit: int = 1000, mode: TrexCaptureMode = TrexCaptureMode.FIXED, bpf_filter: str = "", *ports: TrexPort
     ) -> None:
         """Start RX capture on list of ports.
 
