@@ -1,7 +1,7 @@
 import base64
 import json
-import os
 from enum import Enum
+from pathlib import Path
 
 import yaml
 from scapy.layers.inet import IP
@@ -46,7 +46,7 @@ STLStreamDstMAC_ARP = 2
 
 
 class TrexStream(TrexObject):
-    def __init__(self, parent, index, name):
+    def __init__(self, parent, index: int, name: str) -> None:
         """Create stream object.
 
         :param parent: parent port
@@ -107,25 +107,19 @@ class TrexStream(TrexObject):
             self.fields["flow_stats"]["rule_type"] = type.name
             self.fields["flow_stats"]["stream_id"] = stream_id
 
-    def set_packet(self, packet=None, mac_src_override_by_pkt=None, mac_dst_override_mode=None, dummy_stream=False):
+    def set_packet(
+        self,
+        packet: STLPktBuilder = None,
+        mac_src_override_by_pkt: int = None,
+        mac_dst_override_mode: int = None,
+        dummy_stream: bool = False,
+    ) -> None:
         """Set packet headers.
 
-        :todo: packet should be Scapy packet.
-
         :param packet: requested packet
-        :type packet: STLPktBuilder
-
-                  mac_src_override_by_pkt : bool
-                        Template packet sets src MAC.
-
-                  mac_dst_override_mode=None : STLStreamDstMAC_xx
-                        Template packet sets dst MAC.
-
-                  dummy_stream : bool
-                        For delay purposes, will not be sent.
-
-        :param packet:
-        :return:
+        :param mac_src_override_by_pkt: Template packet sets src MAC.
+        :param mac_dst_override_mode: Template packet sets dst MAC - STLStreamDstMAC_CFG_FILE/STLStreamDstMAC_PKT/STLStreamDstMAC_ARP
+        :param dummy_stream: For delay purposes, will not be sent.
         """
         # save for easy construct code from stream object
         self.mac_src_override_by_pkt = mac_src_override_by_pkt
@@ -134,18 +128,15 @@ class TrexStream(TrexObject):
 
         if mac_src_override_by_pkt is None:
             int_mac_src_override_by_pkt = 0
-            if packet:
-                if packet.is_default_src_mac() is False:
-                    int_mac_src_override_by_pkt = 1
-
+            if packet and packet.is_default_src_mac() is False:
+                int_mac_src_override_by_pkt = 1
         else:
             int_mac_src_override_by_pkt = int(mac_src_override_by_pkt)
 
         if mac_dst_override_mode is None:
             int_mac_dst_override_mode = 0
-            if packet:
-                if packet.is_default_dst_mac() is False:
-                    int_mac_dst_override_mode = STLStreamDstMAC_PKT
+            if packet and packet.is_default_dst_mac() is False:
+                int_mac_dst_override_mode = STLStreamDstMAC_PKT
         else:
             int_mac_dst_override_mode = int(mac_dst_override_mode)
 
@@ -232,12 +223,14 @@ class TrexStream(TrexObject):
         """Return True if stream was configured with flow stats."""
         return self.fields["flow_stats"]["enabled"]
 
-    def get_pkt_len(self, count_crc=True):
-        """Get packet number of bytes."""
+    def get_pkt_len(self, count_crc: bool = True) -> int:
+        """Get packet number of bytes.
+
+        :param count_crc: If True, add 4 bytes for CRC.
+        """
         pkt_len = len(self.get_pkt())
         if count_crc:
             pkt_len += 4
-
         return pkt_len
 
     def get_pkt_type(self):
@@ -278,12 +271,13 @@ class TrexStream(TrexObject):
 
 
 class TrexYamlLoader:
-    def __init__(self, port, yaml_file):
+    def __init__(self, port, yaml_file: Path) -> None:
         self.port = port
-        self.yaml_path = os.path.dirname(yaml_file)
         self.yaml_file = yaml_file
 
-    def __parse_packet(self, stream, packet_dict, mac_src_override_by_pkt, mac_dst_override_mode):
+    def __parse_packet(
+        self, stream: TrexStream, packet_dict: dict, mac_src_override_by_pkt: int, mac_dst_override_mode: int
+    ) -> None:
 
         pkt_str = base64.b64decode(packet_dict["binary"])
         builder = STLPktBuilder(pkt_buffer=pkt_str)
@@ -311,7 +305,7 @@ class TrexYamlLoader:
             stream.set_flow_stats(TrexFlowStatsType.none)
         stream.set_flow_stats(TrexFlowStatsType[flow_stats_obj.get("rule_type")], flow_stats_obj.get("stream_id"))
 
-    def __parse_stream(self, yaml_object):
+    def __parse_stream(self, yaml_object: dict) -> TrexStream:
 
         # create the stream
         s_obj = yaml_object["stream"]
@@ -333,8 +327,8 @@ class TrexYamlLoader:
         self.__parse_packet(
             stream,
             s_obj["packet"],
-            mac_src_override_by_pkt=s_obj.get("mac_src_override_by_pkt", 0),
-            mac_dst_override_mode=s_obj.get("mac_src_override_by_pkt", 0),
+            mac_src_override_by_pkt=s_obj["flags"] & 0x01,
+            mac_dst_override_mode=(s_obj["flags"] & 0x06) >> 1,
         )
 
         # rx stats
@@ -351,5 +345,5 @@ class TrexYamlLoader:
         with open(self.yaml_file, "r") as f:
             yaml_str = f.read()
             objects = yaml.safe_load(yaml_str)
-            streams = [self.__parse_stream(obj) for obj in objects]
-            return streams
+        streams = [self.__parse_stream(obj) for obj in objects]
+        return streams

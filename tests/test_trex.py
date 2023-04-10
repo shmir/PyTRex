@@ -4,6 +4,7 @@ pytrex tests.
 import json
 import logging
 import os
+from pathlib import Path
 from typing import List
 
 from scapy.layers.inet import IP
@@ -97,10 +98,10 @@ def test_streams(trex: TrexApp, ports: List[int]) -> None:
     port_0 = list(trex_ports.values())[0]
     port_1 = list(trex_ports.values())[1]
     port_0.remove_all_streams()
-    port_0.load_streams(os.path.dirname(__file__) + "/profiles/test_profile_1.yaml")
+    port_0.load_streams(Path(__file__).parent.joinpath("profiles/test_profile_1.yaml"))
     port_0.write_streams()
     port_1.remove_all_streams()
-    port_1.load_streams(os.path.dirname(__file__) + "/profiles/test_profile_2.yaml")
+    port_1.load_streams(Path(__file__).parent.joinpath("profiles/test_profile_2.yaml"))
     port_1.write_streams()
     stream_0 = list(trex.server.ports[0].streams.values())[0]
 
@@ -139,12 +140,12 @@ def test_packets(trex: TrexApp, ports: List[int]) -> None:
     stream_0.set_tx_type(TrexTxType.single_burst, packets=100)
     stream_0.set_next("s2")
     packet = STLPktBuilder(pkt=Ether(src="11:11:11:11:11:11") / IP(src="10.10.10.10"))
-    stream_0.set_packet(packet)
+    stream_0.set_packet(packet, 1, 1)
 
     stream_1.set_rate(TrexRateType.pps, 50)
     stream_1.set_tx_type(TrexTxType.multi_burst, packets=200, ibg=0.0, count=1)
     packet = STLPktBuilder(pkt=Ether(src="22:22:22:22:22:22") / IP(src="20.20.20.20"))
-    stream_1.set_packet(packet)
+    stream_1.set_packet(packet, 1, 1)
 
     tx_port.write_streams()
     trex.server.clear_stats()

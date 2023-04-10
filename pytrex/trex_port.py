@@ -5,6 +5,7 @@ import re
 import time
 from copy import deepcopy
 from enum import Enum
+from pathlib import Path
 from typing import Dict, List, Optional
 
 from trafficgenerator import TgnError
@@ -177,7 +178,7 @@ class TrexPort(TrexObject):
         """
         return TrexStream(self, index=len(self.streams), name=name)
 
-    def load_streams(self, yaml_file) -> None:
+    def load_streams(self, yaml_file: Path) -> None:
         """Load streams from YAML file.
 
         :param yaml_file: full path to yaml profile file.
@@ -347,7 +348,7 @@ class TrexPort(TrexObject):
     #
 
     @property
-    def streams(self) -> Dict[str, "TrexPort"]:
+    def streams(self) -> dict[str, TrexStream]:
         return {s.name: s for s in self.get_objects_by_type("stream")}
 
     @property

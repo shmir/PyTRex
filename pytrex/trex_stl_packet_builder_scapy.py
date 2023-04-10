@@ -1581,24 +1581,18 @@ class STLPktBuilder:
             else:
                 raise CTRexPacketBuildException(-14, "bad packet")
 
-    def is_default_src_mac(self):
+    def is_default_src_mac(self) -> bool:
         if self.is_binary_source:
             return True
-        p = self.pkt
-        if isinstance(p, Packet):
-            if isinstance(p, Ether):
-                if "src" in p.fields:
-                    return False
+        if isinstance(self.pkt, Packet) and isinstance(self.pkt, Ether) and "src" in self.pkt.fields:
+            return False
         return True
 
     def is_default_dst_mac(self):
         if self.is_binary_source:
             return True
-        p = self.pkt
-        if isinstance(p, Packet):
-            if isinstance(p, Ether):
-                if "dst" in p.fields:
-                    return False
+        if isinstance(self.pkt, Packet) and isinstance(self.pkt, Ether) and "dst" in self.pkt.fields:
+            return False
         return True
 
     def compile(self):

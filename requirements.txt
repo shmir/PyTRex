@@ -1,11 +1,11 @@
-pyyaml
 scapy
 pytrafficgen>=4.0.0,<4.1.0
+pyyaml
+pyzmq
 
 # Testing
 pytest
 pytest-cov
-tox
 
 # Pipeline
 pre-commit
