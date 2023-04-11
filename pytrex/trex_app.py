@@ -75,7 +75,7 @@ class TrexServer(TrexObject):
             port.release()
         self.api.disconnect()
 
-    def reserve_ports(self, locations: List[int], force: bool = False, reset: bool = False) -> Dict[int, TrexPort]:
+    def reserve_ports(self, locations: List[int], force: bool = False, reset: bool = False) -> dict[int, TrexPort]:
         """Reserve ports.
 
         TRex -> Port -> Acquire.
@@ -85,20 +85,20 @@ class TrexServer(TrexObject):
         :param reset: True - reset port, False - leave port configuration
         :return: ports dictionary (location: object)
         """
-        return_dict = {}
         for location in locations:
             TrexPort(parent=self, index=location).reserve(force, reset)
-            return_dict[location] = self.ports[location]
-        return return_dict
+        return self.ports
 
     #
     # Configuration
     #
 
     def get_system_info(self) -> dict:
+        """Get system information from server."""
         return self.transmit("get_system_info", {})["result"]
 
     def get_supported_cmds(self) -> dict:
+        """Get supported commands from server."""
         return self.transmit("get_supported_cmds", {})["result"]
 
     #
@@ -122,7 +122,7 @@ class TrexServer(TrexObject):
         :param blocking: if blocking - wait for transmit end, else - return after transmit starts.
         :param ports: list of ports to start transmit on, if empty, start on all ports.
         """
-        ports = ports if ports else self.ports.values()
+        ports = ports or self.ports.values()
 
         synchronized = True
         if not len(ports) % 2:
@@ -201,7 +201,7 @@ class TrexServer(TrexObject):
             Capture files for each port will be stored in individual output file named 'prefix-{port ID}.txt'.
         :param ports: list of ports to stop capture on, if empty, stop on all ports.
         """
-        ports = ports if ports else list(self.ports.values())
+        ports = ports or self.ports.values()
         packets = {}
         for port in ports:
             port_output = f"{output}-{port.id}.txt" if output else None
@@ -213,7 +213,7 @@ class TrexServer(TrexObject):
     #
 
     @property
-    def ports(self) -> Dict[int, TrexPort]:
+    def ports(self) -> dict[int, TrexPort]:
         """Return dictionary {index: TrexPort} of all ports."""
         return {p.id: p for p in self.get_objects_by_type("port")}
 

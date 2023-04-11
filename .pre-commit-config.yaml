@@ -1,11 +1,11 @@
 repos:
   - repo: https://github.com/timothycrosley/isort
-    rev: 5.11.2
+    rev: 5.11.5
     hooks:
       - id: isort
         language_version: python3.9
   - repo: https://github.com/python/black
-    rev: 22.12.0
+    rev: 23.3.0
     hooks:
       - id: black
         language_version: python3.9
@@ -26,21 +26,19 @@ repos:
           --max-line-length=127,
           '--ignore=D105,D200,W503,F401,F811'
         ]
-  - repo: local
+  - repo: https://github.com/pre-commit/mirrors-pylint
+    rev: v3.0.0a5
     hooks:
       - id: pylint
-        name: pylint
-        entry: pylint
         language: system
         types: [python]
         args: [
-          --max-line-length=127,
           '--disable=logging-fstring-interpolation,logging-not-lazy,unspecified-encoding',
           '--good-names=_,rc,ti,ip,l3,rx,tx',
           '--load-plugins=pylint_pytest'
         ]
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v0.991
+    rev: v1.2.0
     hooks:
     -   id: mypy
         verbose: true
