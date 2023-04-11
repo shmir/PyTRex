@@ -29,7 +29,7 @@ def test_inventory(trex: TrexApp) -> None:
 
 
 def test_reserve_ports(trex: TrexApp, ports: List[int]) -> None:
-    trex_ports = trex.server.reserve_ports(ports, force=True)
+    trex_ports = trex.server.reserve_ports(ports, force=True, reset=True)
     assert len(trex_ports) == 2
 
 

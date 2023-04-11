@@ -15,12 +15,6 @@ class TrexObject(TgnObject):
             self.username = parent.username
             self.session_id = parent.session_id
             self.server = parent.server
-            if parent.index:
-                data["objRef"] = f'{data["objType"]}/{parent.index}'
-                if "index" in data:
-                    data["objRef"] += f'{data["index"]}'
-            else:
-                data["objRef"] = f'{data["objType"]}/{data["index"]}'
         super().__init__(parent, **data)
 
     def transmit(self, method_name: str, params: dict = None) -> dict:
