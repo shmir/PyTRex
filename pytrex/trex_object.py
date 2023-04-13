@@ -9,12 +9,15 @@ from trafficgenerator.tgn_object import TgnObject
 class TrexObject(TgnObject):
     """Base class for all Trex objects."""
 
-    def __init__(self, parent: Union["TrexObject", None], **data):
+    def __init__(self, parent: Union["TrexObject", None], **data: str):
         """Create TRex object."""
         if parent:
             self.username = parent.username
             self.session_id = parent.session_id
             self.server = parent.server
+            data["objRef"] = f"{parent.ref}/{data['objType']}"
+            if "index" in data:
+                data["objRef"] += data["index"]
         super().__init__(parent, **data)
 
     def transmit(self, method_name: str, params: dict = None) -> dict:

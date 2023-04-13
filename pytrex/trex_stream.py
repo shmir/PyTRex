@@ -46,14 +46,14 @@ STLStreamDstMAC_ARP = 2
 
 
 class TrexStream(TrexObject):
-    def __init__(self, parent, index: int, name: str) -> None:
+    def __init__(self, port, index: int, name: str) -> None:
         """Create stream object.
 
-        :param parent: parent port
+        :param port: parent port
         :param index: stream index under port, zero based
         :param name: stream name
         """
-        super().__init__(objType="stream", parent=parent, index=index, name=name)
+        super().__init__(parent=port, objType="stream", index=str(index), name=name)
         self.reset_fields()
 
     def __repr__(self):
@@ -278,13 +278,11 @@ class TrexYamlLoader:
     def __parse_packet(
         self, stream: TrexStream, packet_dict: dict, mac_src_override_by_pkt: int, mac_dst_override_mode: int
     ) -> None:
-
         pkt_str = base64.b64decode(packet_dict["binary"])
         builder = STLPktBuilder(pkt_buffer=pkt_str)
         stream.set_packet(builder, mac_src_override_by_pkt, mac_dst_override_mode)
 
     def __parse_mode(self, stream, mode_obj):
-
         rate_type = TrexRateType[mode_obj.get("rate").get("type", "continuous")]
         rate_value = mode_obj.get("rate").get("value", 1.0)
         stream.set_rate(rate_type, rate_value)
@@ -300,13 +298,11 @@ class TrexYamlLoader:
         stream.set_tx_type(tx_type, **attributes)
 
     def __parse_flow_stats(self, stream, flow_stats_obj):
-
         if not flow_stats_obj.get("enabled"):
             stream.set_flow_stats(TrexFlowStatsType.none)
         stream.set_flow_stats(TrexFlowStatsType[flow_stats_obj.get("rule_type")], flow_stats_obj.get("stream_id"))
 
     def __parse_stream(self, yaml_object: dict) -> TrexStream:
-
         # create the stream
         s_obj = yaml_object["stream"]
         stream = self.port.add_stream(name=yaml_object.get("name"))

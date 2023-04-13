@@ -75,7 +75,7 @@ class TrexServer(TrexObject):
             port.release()
         self.api.disconnect()
 
-    def reserve_ports(self, locations: List[int], force: bool = False, reset: bool = False) -> dict[int, TrexPort]:
+    def reserve_ports(self, locations: list[int], force: bool = False, reset: bool = False) -> dict[int, TrexPort]:
         """Reserve ports.
 
         TRex -> Port -> Acquire.
@@ -86,7 +86,7 @@ class TrexServer(TrexObject):
         :return: ports dictionary (location: object)
         """
         for location in locations:
-            TrexPort(parent=self, index=location).reserve(force, reset)
+            TrexPort(server=self, index=location).reserve(force, reset)
         return self.ports
 
     #

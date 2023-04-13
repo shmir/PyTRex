@@ -32,6 +32,6 @@ def trex(sut_utils: TrexSutUtils) -> Iterable[TrexApp]:
 
 
 @pytest.fixture(scope="session")
-def ports(sut_utils: TrexSutUtils) -> list[str]:
+def ports(sut_utils: TrexSutUtils) -> list[int]:
     """Yield TRex device under test ports locations."""
     return sut_utils.locations()

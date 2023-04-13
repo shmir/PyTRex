@@ -19,7 +19,6 @@ MASK_ALL = (1 << 64) - 1
 
 
 def decode_multiplier(val, allow_update=False, divide_count=1):
-
     factor_table = {None: 1, "k": 1e3, "m": 1e6, "g": 1e9}
     pattern = r"^(\d+(\.\d+)?)(((k|m|g)?(bpsl1|pps|bps))|%)?"
 
@@ -102,13 +101,13 @@ class PortState(Enum):
 class TrexPort(TrexObject):
     """Represents TRex port."""
 
-    def __init__(self, parent, index):
+    def __init__(self, server, index: int) -> None:
         """Create port object.
 
-        :param parent: parent chassis.
-        :param index: port index, zero based
+        :param server: Parent server.
+        :param index: Port index, zero based
         """
-        super().__init__(parent=parent, objType="port", index=index)
+        super().__init__(parent=server, objType="port", index=str(index))
         self.mul = decode_multiplier("1", allow_update=False, divide_count=1)
         self.duration = -1
         self.force = False

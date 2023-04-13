@@ -2,7 +2,6 @@
 Tests for pytrex package.
 """
 import getpass
-from typing import List
 
 from trafficgenerator import TgnSutUtils, set_logger
 from trafficgenerator.tgn_server import Server
@@ -16,7 +15,7 @@ class TrexSutUtils(TgnSutUtils):
     def trex(self) -> TrexApp:
         return TrexApp(getpass.getuser(), self.sut["server"]["ip"])
 
-    def locations(self) -> List[str]:
+    def locations(self) -> list[int]:
         return self.sut["server"]["ports"]
 
     def server(self) -> Server:

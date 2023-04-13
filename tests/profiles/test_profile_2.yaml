@@ -1,6 +1,6 @@
 ---
-- name: "p2-s1"
-  next: "p2-s2"
+- name: "p1-s1"
+  next: "p1-s2"
   stream:
     action_count: 0
     enabled: true
@@ -31,7 +31,7 @@
       instructions: []
       cache_size: 5000
   stream_id: 0
-- name: "p2-s2"
+- name: "p1-s2"
   
   stream:
     action_count: 0

@@ -2,7 +2,7 @@ from trafficgenerator.tgn_object import TgnSubStatsDict
 
 
 class TrexStatistics:
-    def __init__(self, server):
+    def __init__(self, server) -> None:
         self.server = server
         self.statistics = TgnSubStatsDict()
 
@@ -16,7 +16,7 @@ class TrexPortStatistics(TrexStatistics):
 
 
 class TrexStreamStatistics(TrexStatistics):
-    def __init__(self, server):
+    def __init__(self, server) -> None:
         super().__init__(server)
         rc = self.server.api.rpc.transmit("get_active_pgids")
         self.ids = rc["result"]["ids"]["flow_stats"]
