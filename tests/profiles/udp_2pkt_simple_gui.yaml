@@ -1,0 +1,61 @@
+---
+- name: "Stream_0"
+  
+  stream:
+    action_count: 0
+    enabled: true
+    flags: 0
+    flow_stats:
+      enabled: false
+      stream_id: 0
+    isg: 0.0
+    mode:
+      rate:
+        type: "pps"
+        value: 1.0
+      type: "continuous"
+      total_pkts: 1
+      pkts_per_burst: 1
+      ibg: 0.0
+      count: 1
+    
+    packet:
+      binary: "AAAAAQAAAAAAAgAACABFAAAmAAEAAEAROsUQAAABMAAAAQQBAAwAEmFheHh4eHh4eHh4eA=="
+      meta: ""
+    self_start: true
+    advanced_mode: true
+    core_id: -1
+    vm:
+      instructions: []
+    start_paused: false
+  stream_id: 0
+- name: "Stream_1"
+  
+  stream:
+    action_count: 0
+    enabled: true
+    flags: 0
+    flow_stats:
+      enabled: false
+      stream_id: 0
+    isg: 0.0
+    mode:
+      rate:
+        type: "pps"
+        value: 1.0
+      type: "continuous"
+      total_pkts: 1
+      pkts_per_burst: 1
+      ibg: 0.0
+      count: 1
+    
+    packet:
+      binary: "AAAAAQAAAAAAAgAACABFAAAmAAEAAEAROsUQAAABMAAAAQQBAAwAEmFheHh4eHh4eHh4eA=="
+      meta: ""
+    self_start: true
+    advanced_mode: true
+    core_id: -1
+    vm:
+      instructions: []
+    start_paused: false
+  stream_id: 0

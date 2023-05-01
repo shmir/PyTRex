@@ -20,6 +20,7 @@ logger = logging.getLogger("tgn.trex")
 
 
 def test_inventory(trex: TrexApp) -> None:
+    """Test inventory and commands."""
     sys_info = trex.server.get_system_info()
     supported_cmds = trex.server.get_supported_cmds()
     logger.info(f"server: {sys_info['core_type']}")
@@ -29,55 +30,33 @@ def test_inventory(trex: TrexApp) -> None:
 
 
 def test_reserve_ports(trex: TrexApp, ports: list[int]) -> None:
+    """Test port reservation."""
     trex_ports = trex.server.reserve_ports(ports, force=True, reset=True)
     assert len(trex_ports) == 2
 
 
 def test_load_streams(trex: TrexApp, ports: list[int]) -> None:
-    trex_port = list(trex.server.reserve_ports(ports, force=True).values())[0]
-    trex_port.remove_all_streams()
-    assert trex_port.get_port_state() == PortState.IDLE
-    trex_port.load_streams(os.path.dirname(__file__) + "/profiles/test_profile_1.yaml")
-    trex_port.write_streams()
-    assert trex_port.get_port_state() == PortState.STREAMS
+    """Test loading streams from GUI and stl-sim."""
+    port_0, port_1 = trex.server.reserve_ports(ports, force=True).values()
+    port_0.remove_all_streams()
+    assert port_0.get_port_state() == PortState.IDLE
+    port_0.load_streams(os.path.dirname(__file__) + "/profiles/udp_2pkt_simple.yaml")
+    port_0.write_streams()
+    assert port_0.get_port_state() == PortState.STREAMS
+    port_1.load_streams(os.path.dirname(__file__) + "/profiles/udp_2pkt_simple_gui.yaml")
+    port_1.write_streams()
+    assert port_1.get_port_state() == PortState.STREAMS
 
 
 def test_traffic(trex: TrexApp, ports: list[int]) -> None:
+    """Test traffic and port statistics."""
     trex_ports = trex.server.reserve_ports(ports, force=True)
-    tx_port = list(trex_ports.values())[0]
-    rx_port = list(trex_ports.values())[1]
-    tx_port.remove_all_streams()
-    tx_port.load_streams(os.path.dirname(__file__) + "/profiles/test_profile_1.yaml")
-    tx_port.write_streams()
-
-    tx_port.clear_stats()
-    rx_port.clear_stats()
-    tx_port_stats = tx_port.read_stats()
-    rx_port_stats = rx_port.read_stats()
-    print(json.dumps(tx_port_stats, indent=2))
-    print(json.dumps(rx_port_stats, indent=2))
-    assert tx_port_stats["opackets"] == 0
-    assert 0 <= rx_port_stats["ipackets"]
-
-    trex.server.start_transmit(True, tx_port)
-    time.sleep(1)
-    tx_port_stats = tx_port.read_stats()
-    rx_port_stats = rx_port.read_stats()
-    print(json.dumps(tx_port_stats, indent=2))
-    print(json.dumps(rx_port_stats, indent=2))
-    assert tx_port_stats["opackets"] == 300
-    assert 300 <= rx_port_stats["ipackets"]
-
-
-def test_bidir_traffic(trex: TrexApp, ports: list[int]) -> None:
-    trex_ports = trex.server.reserve_ports(ports, force=True)
-    port_0 = list(trex_ports.values())[0]
-    port_1 = list(trex_ports.values())[1]
+    port_0, port_1 = list(trex_ports.values())
     port_0.remove_all_streams()
-    port_0.load_streams(os.path.dirname(__file__) + "/profiles/test_profile_1.yaml")
+    port_0.load_streams(os.path.dirname(__file__) + "/profiles/test_profile_0.yaml")
     port_0.write_streams()
     port_1.remove_all_streams()
-    port_1.load_streams(os.path.dirname(__file__) + "/profiles/test_profile_2.yaml")
+    port_1.load_streams(os.path.dirname(__file__) + "/profiles/test_profile_1.yaml")
     port_1.write_streams()
 
     trex.server.clear_stats()
@@ -86,25 +65,25 @@ def test_bidir_traffic(trex: TrexApp, ports: list[int]) -> None:
 
     port_stats_view = TrexPortStatistics(trex.server)
     port_stats_view.read()
-    print(port_stats_view.statistics.dumps(indent=2))
+    logger.info(port_stats_view.statistics.dumps(indent=2))
 
     port_0_stats = port_0.read_stats()
     port_1_stats = port_1.read_stats()
-    print(json.dumps(port_0_stats, indent=2))
-    print(json.dumps(port_1_stats, indent=2))
-    assert 300 <= port_0_stats["ipackets"]
-    assert 300 <= port_1_stats["ipackets"]
+    logger.info(json.dumps(port_0_stats, indent=2))
+    logger.info(json.dumps(port_1_stats, indent=2))
+    assert port_0_stats["opackets"] == 300
+    assert port_1_stats["opackets"] == 300
 
 
 def test_streams(trex: TrexApp, ports: list[int]) -> None:
+    """Test stream statistics."""
     trex_ports = trex.server.reserve_ports(ports, force=True)
-    port_0 = list(trex_ports.values())[0]
-    port_1 = list(trex_ports.values())[1]
+    port_0, port_1 = list(trex_ports.values())
     port_0.remove_all_streams()
-    port_0.load_streams(Path(__file__).parent.joinpath("profiles/test_profile_1.yaml"))
+    port_0.load_streams(Path(__file__).parent.joinpath("profiles/test_profile_0.yaml"))
     port_0.write_streams()
     port_1.remove_all_streams()
-    port_1.load_streams(Path(__file__).parent.joinpath("profiles/test_profile_2.yaml"))
+    port_1.load_streams(Path(__file__).parent.joinpath("profiles/test_profile_1.yaml"))
     port_1.write_streams()
     stream_0 = list(trex.server.ports[0].streams.values())[0]
 
@@ -131,7 +110,8 @@ def test_streams(trex: TrexApp, ports: list[int]) -> None:
     port_0.write_streams()
 
 
-def test_packets(trex: TrexApp, ports: list[int]) -> None:
+def test_capture(trex: TrexApp, ports: list[int]) -> None:
+    """Test capture."""
     trex_ports = trex.server.reserve_ports(ports, force=True, reset=True)
     tx_port = list(trex_ports.values())[0]
     rx_port = list(trex_ports.values())[1]

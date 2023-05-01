@@ -271,9 +271,9 @@ class TrexStream(TrexObject):
 
 
 class TrexYamlLoader:
-    def __init__(self, port, yaml_file: Path) -> None:
+    def __init__(self, port, profile_path: Path) -> None:
         self.port = port
-        self.yaml_file = yaml_file
+        self.profile_path = profile_path
 
     def __parse_packet(
         self, stream: TrexStream, packet_dict: dict, mac_src_override_by_pkt: int, mac_dst_override_mode: int
@@ -297,15 +297,15 @@ class TrexYamlLoader:
             attributes["count"] = mode_obj.get("count", 2)
         stream.set_tx_type(tx_type, **attributes)
 
-    def __parse_flow_stats(self, stream, flow_stats_obj):
+    def __parse_flow_stats(self, stream: TrexStream, flow_stats_obj: dict) -> None:
         if not flow_stats_obj.get("enabled"):
             stream.set_flow_stats(TrexFlowStatsType.none)
-        stream.set_flow_stats(TrexFlowStatsType[flow_stats_obj.get("rule_type")], flow_stats_obj.get("stream_id"))
+        stream.set_flow_stats(TrexFlowStatsType[flow_stats_obj.get("rule_type", "none")], flow_stats_obj.get("stream_id"))
 
     def __parse_stream(self, yaml_object: dict) -> TrexStream:
         # create the stream
-        s_obj = yaml_object["stream"]
-        stream = self.port.add_stream(name=yaml_object.get("name"))
+        s_obj = yaml_object["stream"] if "stream" in yaml_object else yaml_object
+        stream = self.port.add_stream(name=yaml_object.get("name", f"stream-{len(self.port.streams)}"))
 
         stream.config(
             enabled=s_obj.get("enabled", True),
@@ -338,8 +338,7 @@ class TrexYamlLoader:
 
     def parse(self) -> list:
         """Read YAML and pass it down to stream object."""
-        with open(self.yaml_file, "r") as f:
-            yaml_str = f.read()
-            objects = yaml.safe_load(yaml_str)
+        with open(self.profile_path, "r") as yaml_file:
+            objects = yaml.safe_load(yaml_file.read())
         streams = [self.__parse_stream(obj) for obj in objects]
         return streams
